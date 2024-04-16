@@ -1,0 +1,14 @@
+name: cbase
+channels:
+  - conda-forge
+  - defaults
+  - nsidc
+
+dependencies:
+  - python
+  - dask
+  - h5py
+  - matplotlib
+  - netcdf4
+  - numpy
+  - xarray
