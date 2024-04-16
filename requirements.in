@@ -1,0 +1,6 @@
+pyhdf
+h5netcdf
+matplotlib
+netcdf4
+numpy
+xarray
