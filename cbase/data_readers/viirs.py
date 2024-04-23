@@ -13,17 +13,18 @@ class VGACData:
     Class to read and handle VGAC data
     """
 
-    longitude: float
-    latitude: float
-    time: float
+    longitude: np.ndarray
+    latitude: np.ndarray
+    validation_height_base: np.ndarray
+    time: np.ndarray
 
 
-def read_data(filepath: Path) -> VGACData:
+def read_vgac(filepath: Path) -> VGACData:
     """read data from netCDF file"""
-    with xr.open_dataset(filepath) as da:
+    with xr.open_dataset(filepath, decode_times=False) as da:
         time = convert_time2datetime(da)
-
-        vgac = VGACData(da.longitude.values, da.latitude.values, time)
+        validation_height_base = -999.9 * np.ones_like(da.lat.values)
+        vgac = VGACData(da.lon.values, da.lat.values, validation_height_base, time)
         return vgac
 
 
