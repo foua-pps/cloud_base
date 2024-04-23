@@ -1,0 +1,3 @@
+I1, I2 = 300, 425
+COLLOCATION_THRESHOLD = 4  # km
+TIME1, TIME2 = 10, 17.5  # minutes
