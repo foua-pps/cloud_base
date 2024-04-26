@@ -21,6 +21,7 @@ class CloudsatData:
     longitude: float
     latitude: float
     validation_height_base: float
+    validation_height: float
     time: float
 
 
@@ -34,7 +35,11 @@ def read_cloudsat(filename: Path):
     cloudsat = add_validation_ctth_cloudsat(cloudsat)
     times = convert2datetime(cloudsat.sec_1970, BaseDate("197001010000"))
     return CloudsatData(
-        cloudsat.longitude, cloudsat.latitude, cloudsat.validation_height_base, times
+        cloudsat.longitude,
+        cloudsat.latitude,
+        cloudsat.validation_height_base,
+        cloudsat.validation_height,
+        times,
     )
 
 
