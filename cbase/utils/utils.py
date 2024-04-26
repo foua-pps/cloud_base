@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
+import xarray as xr
 from datetime import datetime, timedelta
 
 
@@ -50,3 +51,15 @@ def haversine_distance(
     c = 2 * np.arcsin(np.sqrt(a))
     distance = R * c
     return distance
+
+
+def create_dataset(
+    lats: np.ndarray, lons: np.ndarray, values: np.ndarray, parameter_name: str
+) -> xr.Dataset:
+    """create xarray dataset"""
+    return xr.DataArray(
+        {
+            parameter_name: (["latitude", "longitude"], values),
+        },
+        coords={"latitude": (["latitude"], lats), "longitude": (["longitude"], lons)},
+    )
