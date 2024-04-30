@@ -1,32 +1,20 @@
-from dataclasses import dataclass
+from datetime import datetime
+import pytz
 import numpy as np
 import xarray as xr
-from datetime import datetime, timedelta
 
 
 R = 6371.0  # Earth's radius in kilometers
 
 
-@dataclass
-class BaseDate:
-    """
-    string format for base date
-    "%Y%m%d%H%M"
-    """
-
-    base_date: str
-
-    def __str__(self):
-        return self.base_date
-
-
-def convert2datetime(times: np.array, base_date_string: BaseDate) -> np.array:
-    """
-    convert time from secs to datetime objects
-    """
-
-    base_date = datetime.strptime(base_date_string.base_date, "%Y%m%d%H%M")
-    return np.array([base_date + timedelta(seconds=value) for value in times])
+def datetime64_to_datetime(times: np.datetime64) -> datetime:
+    """convert np.datetime64 to datetime"""
+    return np.array(
+        [
+            datetime.fromtimestamp(np.datetime64(time).astype("uint64") / 1e9, pytz.UTC)
+            for time in times
+        ]
+    )
 
 
 def haversine_distance(
@@ -55,11 +43,14 @@ def haversine_distance(
 
 def create_dataset(
     lats: np.ndarray, lons: np.ndarray, values: np.ndarray, parameter_name: str
-) -> xr.Dataset:
+) -> xr.DataArray:
     """create xarray dataset"""
     return xr.DataArray(
-        {
-            parameter_name: (["latitude", "longitude"], values),
-        },
-        coords={"latitude": (["latitude"], lats), "longitude": (["longitude"], lons)},
+        data=values,
+        dims=["x", "y"],
+        coords=dict(
+            lon=(["x", "y"], lons),
+            lat=(["x", "y"], lats),
+        ),
+        name=parameter_name,
     )
