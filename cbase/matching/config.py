@@ -1,9 +1,28 @@
-I1, I2 = 300, 500  # index to select the part of scan where collocations can lie
+I1, I2 = 0, 800  # index to select the part of scan where collocations can lie
 COLLOCATION_THRESHOLD = 4  # km
+SWATH_CENTER = 400  # VGAC SWATH CENTER
 TIME_WINDOW = [-5, 20]
 IMAGE_SIZE = 32
 PADDING = 1.0  # some extra margin when interpolating ERA5 (in degrees)
-CNN_NWP_PARAMETERS = ["tclw"]
+CNN_NWP_PARAMETERS = [
+    # "h_2meter",
+    # "t_2meter",
+    # "p_surface",
+    # "z_surface",
+    # "ciwv",
+    # "tclw",
+    # "pressure_levels",
+    "t250",
+    # "t500",
+    # "t700",
+    # "t850",
+    # "t900",
+    # "q250",
+    # "q500",
+    # "q700",
+    # "q850",
+    # "q900",
+]
 CNN_SAT_PARAMETERS = [
     "latitude",
     "longitude",
