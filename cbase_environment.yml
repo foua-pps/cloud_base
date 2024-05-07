@@ -5,10 +5,19 @@ channels:
   - nsidc
 
 dependencies:
-  - python
+  - python=3.11
   - dask
   - h5py
   - matplotlib
   - netcdf4
   - numpy
+  - pyhdf
+  - h5netcdf  
+  - pytz
+  - numexpr  
+  - hdf5
+  - h5py
+  - pygrib
+  - scikit-learn
+  - scipy
   - xarray
