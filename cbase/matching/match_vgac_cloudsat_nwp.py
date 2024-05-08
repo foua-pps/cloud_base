@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Union
 import numpy as np
 import xarray as xr
-from scipy.interpolate import griddata
+from pps_nwp.gribfile import GRIBFile
 from cbase.data_readers.viirs import VGACData
 from cbase.data_readers.cloudsat import CloudsatData
 from cbase.utils.utils import haversine_distance
@@ -13,9 +13,10 @@ from .config import (
     COLLOCATION_THRESHOLD,
     TIME_WINDOW,
     IMAGE_SIZE,
-    PADDING,
     CNN_NWP_PARAMETERS,
     CNN_SAT_PARAMETERS,
+    SWATH_CENTER,
+    TIME_DIFF_ALLOWED,
 )
 
 
@@ -33,11 +34,12 @@ class BoundingBox:
 class DataMatcher:
     """Class to match VGAC and CLOUDSAT data, add NWP data to selected scenes"""
 
-    def __init__(self, cloudsat: CloudsatData, vgac: VGACData, era5: xr.Dataset):
+    def __init__(self, cloudsat: CloudsatData, vgac: VGACData, era5: GRIBFile):
         self.cloudsat = cloudsat
         self.vgac = vgac
         self.era5 = era5
 
+        self.out_filename = f"cnn_data_{self.cloudsat.name[:22]}_VGAC.nc"
         self.count_collocations = np.zeros_like(self.vgac.latitude)
 
         if not self.check_overlapping_time():
@@ -109,22 +111,24 @@ class DataMatcher:
         # find args where distance is below threshold
         x_argmin, y_argmin = np.where(distances <= COLLOCATION_THRESHOLD)
 
-        icld1, icld2 = icld[0], icld[1]
         # check tdiff between cloudsat and VGAC collocations
-        tdiff = self.cloudsat.time[icld1:icld2][x_argmin] - self.vgac.time[i]
+        tdiff = np.abs(
+            self.cloudsat.time[icld[0] : icld[1]][x_argmin] - self.vgac.time[i]
+        )
+
         tdiff_minutes = np.array([t.seconds / 60 for t in tdiff])
 
         # get x and y indices
         valid_indices = np.where(
-            (self.cloudsat.validation_height_base[icld1:icld2][x_argmin] > 0)
-            & (tdiff_minutes < 20.0)
+            (self.cloudsat.validation_height_base[icld[0] : icld[1]][x_argmin] > 0)
+            & (tdiff_minutes < TIME_DIFF_ALLOWED)
         )[0]
 
         # update base height and count number of cloudsat obs used for each VGAC pixel
         for valid_index in valid_indices:
             self.vgac.validation_height_base[i, I1:I2][
                 y_argmin[valid_index]
-            ] += self.cloudsat.validation_height_base[icld1:icld2][
+            ] += self.cloudsat.validation_height_base[icld[0] : icld[1]][
                 x_argmin[valid_index]
             ]
             self.count_collocations[i, I1:I2][y_argmin[valid_index]] += 1
@@ -142,16 +146,45 @@ class DataMatcher:
         )
         if np.all(~tmask):
             return None
-        else:
+
+        # check if the guess can be made from previous iteration
+        _, iscan = np.where(self.count_collocations[itime - 5 : itime, :] > 0)
+        if len(iscan) == 0:
+            index = SWATH_CENTER  # center of swath
             distance = haversine_distance(
-                self.vgac.latitude[itime, 400],
-                self.vgac.longitude[itime, 400] % 360,
+                self.vgac.latitude[itime, index],
+                self.vgac.longitude[itime, index],
                 self.cloudsat.latitude[tmask],
-                self.cloudsat.longitude[tmask] % 360,
+                self.cloudsat.longitude[tmask],
             )
             argmin = np.argmin(distance)
             index = np.arange(0, len(self.cloudsat.time), 1)[tmask][argmin]
-            return (index - 25, index + 25)
+
+            cld_mask = np.argwhere(
+                (self.cloudsat.latitude > self.cloudsat.latitude[index] - 1.5)
+                & (self.cloudsat.latitude < self.cloudsat.latitude[index] + 1.5)
+                & (self.cloudsat.longitude > self.cloudsat.longitude[index] - 1.5)
+                & (self.cloudsat.longitude < self.cloudsat.longitude[index] + 1.5)
+            )
+            return (cld_mask[0][0], cld_mask[-1][0])
+
+        index = iscan[-1]  # last scan position where cloudsat and VGAC intersected
+        distance = haversine_distance(
+            self.vgac.latitude[itime, index],
+            self.vgac.longitude[itime, index],
+            self.cloudsat.latitude[tmask],
+            self.cloudsat.longitude[tmask],
+        )
+        argmin = np.argmin(distance)
+        index = np.arange(0, len(self.cloudsat.time), 1)[tmask][argmin]
+        return (index - 10, index + 10)
+
+        # # buffer zone defines the extra cloudsat swath which needs to be
+        # # considered to find the best collocation
+        # # this is a crude way to subset the Cloudsat swath, in future
+        # # a better way could be used
+        # buffer_zone = int(np.min(distance) / 4)
+        # return (index - buffer_zone, index + buffer_zone)
 
     def match_vgac_cloudsat(self):
         """
@@ -162,12 +195,10 @@ class DataMatcher:
 
             if self._get_closest_cloudsat_guess(itime) is None:
                 continue
-            else:
-                icld1, icld2 = self._get_closest_cloudsat_guess(itime)
-                if np.all(self.cloudsat.validation_height_base[icld1:icld2] < 0):
-                    continue
-                else:
-                    self._process_matching_iteration(itime, [icld1, icld2])
+            icld1, icld2 = self._get_closest_cloudsat_guess(itime)
+            if np.all(self.cloudsat.validation_height_base[icld1:icld2] < 0):
+                continue
+            self._process_matching_iteration(itime, [icld1, icld2])
 
         valid_indices = self.count_collocations > 0
 
@@ -178,7 +209,7 @@ class DataMatcher:
         self.vgac.validation_height_base[~valid_indices] = -999.9
 
     def _bounding_box(self, i: int, j: int):
-        """ """
+        """bounding box for CNN input image"""
         return BoundingBox(
             i - int(IMAGE_SIZE / 2),
             i + int(IMAGE_SIZE / 2),
@@ -186,50 +217,18 @@ class DataMatcher:
             j + int(IMAGE_SIZE / 2),
         )
 
-    def _select_nwp_data_for_box(self, box: BoundingBox):
-        """ """
-        nwp_mask = (
-            (
-                self.era5.latitude
-                >= np.min(
-                    self.vgac.latitude[box.i1 : box.i2, box.j1 : box.j2] - PADDING
-                )
-            )
-            & (
-                self.era5.latitude
-                <= np.max(
-                    self.vgac.latitude[box.i1 : box.i2, box.j1 : box.j2] + PADDING
-                )
-            )
-            & (
-                self.era5.longitude
-                >= np.min(
-                    self.vgac.longitude[box.i1 : box.i2, box.j1 : box.j2] - PADDING
-                )
-            )
-            & (
-                self.era5.longitude
-                <= np.max(
-                    self.vgac.longitude[box.i1 : box.i2, box.j1 : box.j2] + PADDING
-                )
-            )
-        )
-        return nwp_mask
+    def _interpolate_nwp_data(
+        self, parameter: str, projection: tuple[np.ndarray, np.ndarray]
+    ) -> np.ndarray:
 
-    def _interpolate_nwp_data(self, parameter: str, mask: np.ndarray, box: BoundingBox):
-        points = (self.era5.latitude[mask], self.era5.longitude[mask])
-        values = self.era5.tclw[mask]
-        return griddata(
-            points,
-            values,
-            (
-                self.vgac.latitude[box.i1 : box.i2, box.j1 : box.j2],
-                self.vgac.longitude[box.i1 : box.i2, box.j1 : box.j2],
-            ),
-            method="cubic",
-        )
+        if parameter not in CNN_NWP_PARAMETERS:
+            raise ValueError(
+                f"the NWP paramter: {parameter} is not present in gribfile"
+            )
+        print(self.era5.get_data(parameter, projection).shape)
+        return self.era5.get_data(parameter, projection)
 
-    def create_cnn_dataset_with_nwp(self) -> xr.Dataset:
+    def create_cnn_dataset_with_nwp(self, to_file=True) -> xr.Dataset:
         """
         crop VGAC images to required size for CNN, add required NWP data,
         and collect data into a xarray dataset
@@ -259,7 +258,8 @@ class DataMatcher:
         lists_sat_data = {name: [] for name in CNN_SAT_PARAMETERS}
         lists_nwp_data = {name: [] for name in CNN_NWP_PARAMETERS}
 
-        for ipix in range(0, len(self.vgac.time), int(IMAGE_SIZE / 2)):
+        inum = 0
+        for ipix in range(0, len(self.vgac.time), IMAGE_SIZE):
             iscan = np.where(self.vgac.validation_height_base[ipix, :] > 0)[0]
             if len(iscan) > 0:
                 iscan = iscan[0]
@@ -269,10 +269,17 @@ class DataMatcher:
                     data = getattr(self.vgac, parameter)
                     values.append(data[box.i1 : box.i2, box.j1 : box.j2])
 
-                nwp_mask = self._select_nwp_data_for_box(box)
-
                 for parameter, values in lists_nwp_data.items():
+                    print(parameter, inum)
+                    remap_lats = lists_sat_data["latitude"][inum]
+                    remap_lons = lists_sat_data["longitude"][inum]
+                    projection = (
+                        remap_lons,
+                        remap_lats,
+                    )  # projection to regrid ERA5 data
+                    values.append(self._interpolate_nwp_data(parameter, projection))
+                inum += 1
+        ds = _make_dataset(lists_sat_data, lists_nwp_data)
 
-                    values.append(self._interpolate_nwp_data(parameter, nwp_mask, box))
-
-        return _make_dataset(lists_sat_data, lists_nwp_data)
+        if to_file is True:
+            ds.to_netcdf(self.out_filename)
