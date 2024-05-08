@@ -6,7 +6,9 @@ from scipy.interpolate import interp1d
 from pps_nwp.gribfile import GRIBFile
 
 
-class PRESSURE_LEVELS(Enum):
+class PressureLevels(Enum):
+    """Enum representing pressure levels"""
+
     T250 = 250  # hPa
     T500 = 500
     T700 = 700
@@ -32,12 +34,8 @@ class Era5:
         """a new wrapper class for GRIB data, uses PPS_NWP,"""
         return Era5(GRIBFile(filepath))
 
-        # grb = grbs.select(name="Total column cloud liquid water")[0]
-        # lats, lons = grb.latlons()
-        # return cls(grb.values, grb.values * 100, lats, lons)
-
     def get_data(
-        self, parameter: str, projection=[tuple[np.ndarray, np.ndarray]]
+        self, parameter: str, projection=tuple[np.ndarray, np.ndarray]
     ) -> np.ndarray:
         """read in the required parameter and also allows to set the projection"""
 
@@ -61,20 +59,15 @@ class Era5:
             values = self.grb.get_q_vertical()[:]
         elif parameter == "h_2meter":
             values = self.grb.get_h_2meter()[:]
-        elif parameter == "pressure_levels":
+        elif parameter == "PressureLevels":
             values = self.grb.get_p_vertical()[:]
         elif parameter in ["t250", "t500", "t700", "t850", "t900"]:
-            values = self.grb.get_t_pressure(PRESSURE_LEVELS[parameter.upper()].value)[
-                :
-            ]
+            values = self.grb.get_t_pressure(PressureLevels[parameter.upper()].value)[:]
         elif parameter in ["q250", "q500", "q700", "q850", "q900"]:
-            values = self.grb.get_q_pressure(PRESSURE_LEVELS[parameter.upper()].value)[
-                :
-            ]
+            values = self.grb.get_q_pressure(PressureLevels[parameter.upper()].value)[:]
         if values is not None:
             return values
-        else:
-            raise ValueError("Invalid parameter name")
+        raise ValueError("Invalid parameter name")
 
     def _interpolate_to_pressure_level(self, field: np.ndarray, new_level: float):
         p = self.grb.get_p_vertical()[:]
