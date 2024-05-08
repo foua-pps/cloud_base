@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
-from cbase.matching.get_matching_csat_vgac_filenames import (
+from pathlib import Path
+from datetime import datetime
+from cbase.matching.get_matching_csat_vgac_nwp_filenames import (
     create_datetime_from_year_doy_hour_minute,
     get_cloudsat_time,
     get_vgac_time,
@@ -8,14 +9,14 @@ from cbase.matching.get_matching_csat_vgac_filenames import (
 )
 
 # Mocked lists for testing
-CLOUDSAT_FILES = ["2018150015649_64371_CS_2B-GEOPROF_GRANULE_P1_R05_E07_F03.hdf"]
+CLOUDSAT_FILES = [Path("2018150015649_64371_CS_2B-GEOPROF_GRANULE_P1_R05_E07_F03.hdf")]
 VGAC_FILES = [
-    "VGAC_VJ102MOD_A2018150_0130_n002738_K005.nc",
-    "VGAC_VJ102MOD_A2018145_0318_n002668_K005.nc",
+    Path("VGAC_VJ102MOD_A2018150_0130_n002738_K005.nc"),
+    Path("VGAC_VJ102MOD_A2018145_0318_n002668_K005.nc"),
 ]
 NWP_FILES = [
-    "GAC_ECMWF_ERA5_201805300100+000H00M",
-    "GAC_ECMWF_ERA5_201805310100+000H00M",
+    Path("GAC_ECMWF_ERA5_201805300100+000H00M"),
+    Path("GAC_ECMWF_ERA5_201805310100+000H00M"),
 ]
 
 
@@ -48,7 +49,6 @@ def test_is_valid_match():
     # Test is_valid_match function
     ctime = get_vgac_time(VGAC_FILES[0])
     vtime = get_cloudsat_time(CLOUDSAT_FILES[0])
-    print(ctime, vtime)
     assert is_valid_match(ctime, vtime)
 
 
