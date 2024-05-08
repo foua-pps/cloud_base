@@ -4,24 +4,31 @@ SWATH_CENTER = 400  # VGAC SWATH CENTER
 TIME_WINDOW = [-5, 20]
 IMAGE_SIZE = 32
 PADDING = 1.0  # some extra margin when interpolating ERA5 (in degrees)
+TIME_DIFF_ALLOWED = 45  # minutes
+SECS_PER_MINUTE = 60
+MINUTES_PER_HOUR = 60
+CLOUDSAT_PATH = "/home/a002602/data/cloud_base/cloudsat/"
+VGAC_PATH = "/home/a002602/data/cloud_base/vgac/"
+NWP_PATH = "/home/a002602/data/cloud_base/NWP/"
+
 CNN_NWP_PARAMETERS = [
-    # "h_2meter",
-    # "t_2meter",
-    # "p_surface",
-    # "z_surface",
-    # "ciwv",
-    # "tclw",
+    "h_2meter",
+    "t_2meter",
+    "p_surface",
+    "z_surface",
+    "ciwv",
+    "tclw",
     # "pressure_levels",
     "t250",
-    # "t500",
-    # "t700",
-    # "t850",
-    # "t900",
-    # "q250",
-    # "q500",
-    # "q700",
-    # "q850",
-    # "q900",
+    "t500",
+    "t700",
+    "t850",
+    "t900",
+    "q250",
+    "q500",
+    "q700",
+    "q850",
+    "q900",
 ]
 CNN_SAT_PARAMETERS = [
     "latitude",
