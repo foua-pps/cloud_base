@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from dataclasses import dataclass
@@ -36,6 +37,7 @@ class CloudsatData:
     validation_height_base: float
     validation_height: float
     time: float
+    name: str
 
     @classmethod
     def from_file(cls, filepath: Path):
@@ -48,11 +50,12 @@ class CloudsatData:
         cloudsat = add_validation_ctth_cloudsat(cloudsat)
         times = convert2datetime(cloudsat.sec_1970, BaseDate("197001010000"))
         return cls(
-            cloudsat.longitude%360,
+            cloudsat.longitude % 360,
             cloudsat.latitude,
             cloudsat.validation_height_base,
             cloudsat.validation_height,
             times,
+            os.path.basename(filepath),
         )
 
 
@@ -68,9 +71,10 @@ def convert2datetime(times: np.array, base_date_string: BaseDate) -> np.array:
 
 
 if __name__ == "__main__":
+
     filename = "/home/a002602/data/cloud_base/cloudsat/2018150150536_64379_CS_2B-GEOPROF_GRANULE_P1_R05_E07_F03.hdf"
     retv = CloudsatData.from_file(filename)
-    print(retv.all_arrays.keys())
+
     fig, ax = plt.subplots(1, 1, figsize=[6, 6])
     ax.scatter(
         retv.longitude,
