@@ -8,22 +8,22 @@ from cbase.matching.match_csat_vgac_nwp_filenames import (
 from cbase.data_readers import cloudsat, viirs, era5
 from cbase.matching.match_vgac_cloudsat_nwp import DataMatcher
 
-
-# filename = "/home/a002602/data/cloud_base/cloudsat/2018150015649_64371_CS_2B-GEOPROF_GRANULE_P1_R05_E07_F03.hdf"
-# vgac_file = (
-#     "/home/a002602/data/cloud_base/vgac/VGAC_VJ102MOD_A2018150_0130_n002738_K005.nc"
-# )
-# era5_file = "/home/a002602/data/cloud_base/NWP/GAC_ECMWF_ERA5_201801010100+000H00M"
-
-# filename1 = "/home/a002602/data/cloud_base/cloudsat/2018150033525_64372_CS_2B-GEOPROF_GRANULE_P1_R05_E07_F03.hdf"
-# vgac_file1 = (
-#     "/home/a002602/data/cloud_base/vgac/VGAC_VJ102MOD_A2018150_0312_n002739_K005.nc"
-# )
+# some demo filenames to check the processing
+INPUT_FILENAMES = {
+    "CLOUDSAT_FILE": Path(
+        "/home/a002602/data/cloud_base/cloudsat/2018150015649_64371_CS_2B-GEOPROF_GRANULE_P1_R05_E07_F03.hdf"
+    ),
+    "VGAC_FILE": Path(
+        "/home/a002602/data/cloud_base/vgac/VGAC_VJ102MOD_A2018150_0130_n002738_K005.nc"
+    ),
+    "NWP_FILE": Path(
+        "/home/a002602/data/cloud_base/NWP/GAC_ECMWF_ERA5_201801010100+000H00M"
+    ),
+}
 
 
 def process(cloudsat_file: Path, vgac_file: Path, nwp_file: Path):
     """main process"""
-    print("starting main  process", cloudsat_file)
     vgc = viirs.VGACData.from_file(vgac_file)
     nwp = era5.Era5.from_file(nwp_file.absolute().as_posix())
     cld = cloudsat.CloudsatData.from_file(cloudsat_file.absolute().as_posix())
@@ -85,4 +85,8 @@ with multiprocessing.Pool() as pool:
         zip(cloudsat_files, vgac_files, nwp_files),
     )
 
-# process(filename, vgac_file, era5_file)
+# process(
+#     INPUT_FILENAMES["CLOUDSAT_FILE"],
+#     INPUT_FILENAMES["VGAC_FILE"],
+#     INPUT_FILENAMES["NWP_FILE"],
+# )
