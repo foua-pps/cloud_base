@@ -17,6 +17,7 @@ from .config import (
     CNN_SAT_PARAMETERS,
     SWATH_CENTER,
     TIME_DIFF_ALLOWED,
+    SECS_PER_MINUTE,
 )
 
 
@@ -116,7 +117,7 @@ class DataMatcher:
             self.cloudsat.time[icld[0] : icld[1]][x_argmin] - self.vgac.time[i]
         )
 
-        tdiff_minutes = np.array([t.seconds / 60 for t in tdiff])
+        tdiff_minutes = np.array([t.seconds / SECS_PER_MINUTE for t in tdiff])
 
         # get x and y indices
         valid_indices = np.where(
@@ -225,7 +226,6 @@ class DataMatcher:
             raise ValueError(
                 f"the NWP paramter: {parameter} is not present in gribfile"
             )
-        print(self.era5.get_data(parameter, projection).shape)
         return self.era5.get_data(parameter, projection)
 
     def create_cnn_dataset_with_nwp(self, to_file=True) -> xr.Dataset:
@@ -270,7 +270,6 @@ class DataMatcher:
                     values.append(data[box.i1 : box.i2, box.j1 : box.j2])
 
                 for parameter, values in lists_nwp_data.items():
-                    print(parameter, inum)
                     remap_lats = lists_sat_data["latitude"][inum]
                     remap_lons = lists_sat_data["longitude"][inum]
                     projection = (
