@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Union
@@ -18,6 +19,7 @@ from .config import (
     SWATH_CENTER,
     TIME_DIFF_ALLOWED,
     SECS_PER_MINUTE,
+    OUTPUT_PATH,
 )
 
 
@@ -40,7 +42,9 @@ class DataMatcher:
         self.vgac = vgac
         self.era5 = era5
 
-        self.out_filename = f"cnn_data_{self.cloudsat.name[:22]}_VGAC.nc"
+        self.out_filename = os.path.join(
+            OUTPUT_PATH, f"cnn_data_{self.cloudsat.name[:22]}_VGAC.nc"
+        )
         self.count_collocations = np.zeros_like(self.vgac.latitude)
 
         if not self.check_overlapping_time():
@@ -121,10 +125,10 @@ class DataMatcher:
 
         # get x and y indices
         valid_indices = np.where(
-            (self.cloudsat.validation_height_base[icld[0] : icld[1]][x_argmin] > 0)
-            & (tdiff_minutes < TIME_DIFF_ALLOWED)
+            self.cloudsat.validation_height_base[icld[0] : icld[1]][x_argmin]
+            > 0 & (tdiff_minutes < TIME_DIFF_ALLOWED)
         )[0]
-
+        #  print(f"indicies, {i}, {valid_indices}, {icld}")
         # update base height and count number of cloudsat obs used for each VGAC pixel
         for valid_index in valid_indices:
             self.vgac.validation_height_base[i, I1:I2][
@@ -211,11 +215,12 @@ class DataMatcher:
 
     def _bounding_box(self, i: int, j: int):
         """bounding box for CNN input image"""
+        N = len(self.vgac.time)
         return BoundingBox(
-            i - int(IMAGE_SIZE / 2),
-            i + int(IMAGE_SIZE / 2),
-            j - int(IMAGE_SIZE / 2),
-            j + int(IMAGE_SIZE / 2),
+            max(0, i - int(IMAGE_SIZE / 2)),
+            min(N, i + int(IMAGE_SIZE / 2)),
+            max(0, j - int(IMAGE_SIZE / 2)),
+            min(N, j + int(IMAGE_SIZE / 2)),
         )
 
     def _interpolate_nwp_data(
@@ -264,20 +269,21 @@ class DataMatcher:
             if len(iscan) > 0:
                 iscan = iscan[0]
                 box = self._bounding_box(ipix, iscan)
-                for parameter, values in lists_sat_data.items():
+                if (box.i2 - box.i1, box.j2 - box.j1) == (IMAGE_SIZE, IMAGE_SIZE):
+                    for parameter, values in lists_sat_data.items():
 
-                    data = getattr(self.vgac, parameter)
-                    values.append(data[box.i1 : box.i2, box.j1 : box.j2])
+                        data = getattr(self.vgac, parameter)
+                        values.append(data[box.i1 : box.i2, box.j1 : box.j2])
 
-                for parameter, values in lists_nwp_data.items():
-                    remap_lats = lists_sat_data["latitude"][inum]
-                    remap_lons = lists_sat_data["longitude"][inum]
-                    projection = (
-                        remap_lons,
-                        remap_lats,
-                    )  # projection to regrid ERA5 data
-                    values.append(self._interpolate_nwp_data(parameter, projection))
-                inum += 1
+                    for parameter, values in lists_nwp_data.items():
+                        remap_lats = lists_sat_data["latitude"][inum]
+                        remap_lons = lists_sat_data["longitude"][inum]
+                        projection = (
+                            remap_lons,
+                            remap_lats,
+                        )  # projection to regrid ERA5 data
+                        values.append(self._interpolate_nwp_data(parameter, projection))
+                    inum += 1
         ds = _make_dataset(lists_sat_data, lists_nwp_data)
 
         if to_file is True:
