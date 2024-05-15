@@ -45,7 +45,7 @@ class CloudsatData:
         read cloudsat data using atrain_match and
         generate constructor from file
         """
-        cloudsat = read_cloudsat_hdf4(filepath)
+        cloudsat = read_cloudsat_hdf4(filepath.as_posix())
         cloudsat = add_validation_ctth_cloudsat(cloudsat)
         times = convert2datetime(cloudsat.sec_1970, BaseDate("197001010000"))
         return cls(
