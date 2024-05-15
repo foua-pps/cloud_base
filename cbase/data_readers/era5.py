@@ -32,7 +32,7 @@ class Era5:
     @classmethod
     def from_file(cls, filepath: Path):
         """a new wrapper class for GRIB data, uses PPS_NWP,"""
-        return Era5(GRIBFile(filepath))
+        return Era5(GRIBFile(filepath.as_posix()))
 
     def get_data(
         self, parameter: str, projection=tuple[np.ndarray, np.ndarray]
