@@ -241,6 +241,7 @@ class DataMatcher:
             npix = np.arange(IMAGE_SIZE)
             nscan = np.arange(IMAGE_SIZE)
             for parameter in CNN_SAT_PARAMETERS:
+                print(parameter, len(lists_sat_data[parameter]))
                 ds[parameter] = xr.DataArray(
                     np.stack(lists_sat_data[parameter]),
                     dims=("nscene", "npix", "nscan"),
@@ -268,7 +269,7 @@ class DataMatcher:
 
                     data = getattr(self.vgac, parameter)
                     values.append(data[box.i1 : box.i2, box.j1 : box.j2])
-
+                    print(data[box.i1 : box.i2, box.j1 : box.j2].shape)
                 for parameter, values in lists_nwp_data.items():
                     remap_lats = lists_sat_data["latitude"][inum]
                     remap_lons = lists_sat_data["longitude"][inum]
