@@ -1,15 +1,16 @@
 I1, I2 = 0, 800  # index to select the part of scan where collocations can lie
 COLLOCATION_THRESHOLD = 4  # km
 SWATH_CENTER = 400  # VGAC SWATH CENTER
-TIME_WINDOW = [-5, 20]
+TIME_WINDOW = [-80, 80]
 IMAGE_SIZE = 32
 PADDING = 1.0  # some extra margin when interpolating ERA5 (in degrees)
-TIME_DIFF_ALLOWED = 45  # minutes
+TIME_DIFF_ALLOWED = 500  # minutes
 SECS_PER_MINUTE = 60
 MINUTES_PER_HOUR = 60
 CLOUDSAT_PATH = "/home/a002602/data/cloud_base/cloudsat/"
 VGAC_PATH = "/home/a002602/data/cloud_base/vgac/"
 NWP_PATH = "/home/a002602/data/cloud_base/NWP/"
+OUTPUT_PATH = "/home/a002602/data/cloud_base/collocated_data/"
 
 CNN_NWP_PARAMETERS = [
     "h_2meter",
