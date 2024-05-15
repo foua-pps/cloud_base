@@ -25,8 +25,8 @@ INPUT_FILENAMES = {
 def process(cloudsat_file: Path, vgac_file: Path, nwp_file: Path):
     """main process"""
     vgc = viirs.VGACData.from_file(vgac_file)
-    nwp = era5.Era5.from_file(nwp_file.absolute().as_posix())
-    cld = cloudsat.CloudsatData.from_file(cloudsat_file.absolute().as_posix())
+    nwp = era5.Era5.from_file(nwp_file)
+    cld = cloudsat.CloudsatData.from_file(cloudsat_file)
 
     # create matching object
     dm = DataMatcher(cld, vgc, nwp)
@@ -77,13 +77,17 @@ def cli(args_list: list[str]) -> None:
 # read in command line args and get list of files to process
 cloudsat_files, vgac_files, nwp_files = cli(argv[1:])
 
+for cloudsat_file, vgac_file, nwp_file in zip(cloudsat_files[4:], vgac_files[4:], nwp_files[4:]):
+    print(cloudsat_file)
+    process(cloudsat_file, vgac_file, nwp_file)
+
 # Create a multiprocessing Pool
-with multiprocessing.Pool() as pool:
-    # Map the function to the list of files
-    pool.starmap(
-        process,
-        zip(cloudsat_files, vgac_files, nwp_files),
-    )
+#with multiprocessing.Pool() as pool:
+#    # Map the function to the list of files
+#    pool.starmap(
+#        process,
+#        zip(cloudsat_files, vgac_files, nwp_files),
+#    )
 
 # process(
 #     INPUT_FILENAMES["CLOUDSAT_FILE"],
