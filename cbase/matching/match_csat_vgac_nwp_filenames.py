@@ -97,8 +97,6 @@ def get_matching_cloudsat_vgac_nwp_files(
     cfiles: list, vfiles: list, nfiles: list
 ) -> tuple[list, list, list]:
     """get matching VGAC filename for CSAT orbit file"""
-    print(cfiles)
-
     matched_vfiles = []
     matched_cfiles = []
     matched_nfiles = []
