@@ -1,5 +1,4 @@
 from pathlib import Path
-import multiprocessing
 from sys import argv
 import argparse
 from cbase.matching.match_csat_vgac_nwp_filenames import (
@@ -8,22 +7,10 @@ from cbase.matching.match_csat_vgac_nwp_filenames import (
 from cbase.data_readers import cloudsat, viirs, era5
 from cbase.matching.match_vgac_cloudsat_nwp import DataMatcher
 
-# some demo filenames to check the processing
-INPUT_FILENAMES = {
-    "CLOUDSAT_FILE": Path(
-        "/home/a002602/data/cloud_base/cloudsat/2018150015649_64371_CS_2B-GEOPROF_GRANULE_P1_R05_E07_F03.hdf"
-    ),
-    "VGAC_FILE": Path(
-        "/home/a002602/data/cloud_base/vgac/VGAC_VJ102MOD_A2018150_0130_n002738_K005.nc"
-    ),
-    "NWP_FILE": Path(
-        "/home/a002602/data/cloud_base/NWP/GAC_ECMWF_ERA5_201801010100+000H00M"
-    ),
-}
-
 
 def process(cloudsat_file: Path, vgac_file: Path, nwp_file: Path):
     """main process"""
+    # read in data
     vgc = viirs.VGACData.from_file(vgac_file)
     nwp = era5.Era5.from_file(nwp_file)
     cld = cloudsat.CloudsatData.from_file(cloudsat_file)
@@ -38,59 +25,105 @@ def cli(args_list: list[str]) -> None:
     """command line args"""
     parser = argparse.ArgumentParser(
         description="Find matching Cloudsat, VGAC and NWP (ERA5) files"
+        "or provide individual matched filenames"
     )
+
     parser.add_argument(
-        "-C",
-        "--cloudsat_files",
+        "-CPATH",
+        "--available_cloudsat_files",
         type=str,
         nargs="+",
-        help="Full path to Cloudsat level1b file(s)",
+        help="Full path to Cloudsat level1b file(s) which you want to process",
+        metavar="CLOUDSAT_FILES_PATH",
+    )
+    parser.add_argument(
+        "-VPATH",
+        "--available_vgac_files",
+        type=str,
+        nargs="+",
+        help="Full path to available VGAC file(s) which you want to process",
+        metavar="VGAC_FILES_PATH",
+    )
+    parser.add_argument(
+        "-NPATH",
+        "--available_nwp_files",
+        type=str,
+        nargs="+",
+        help="Full path to available NWP (ERA5) file(s) which you want to",
+        metavar="NWP_FILES_PATH",
+    )
+    parser.add_argument(
+        "-CFILE",
+        "--matched_cloudsat_file",
+        type=str,
+        nargs="+",
+        help="Matched Cloudsat level1b file(s) which you want to process",
         metavar="CLOUDSAT_FILE",
-        required=True,
     )
     parser.add_argument(
-        "-V",
-        "--vgac_files",
+        "-VFILE",
+        "--matched_vgac_file",
         type=str,
         nargs="+",
-        help="Full path to available VGAC file(s).",
+        help="Matched VGAC file(s) which you want to process",
         metavar="VGAC_FILE",
-        required=True,
     )
     parser.add_argument(
-        "-N",
-        "--nwp_files",
+        "-NFILE",
+        "--matched_nwp_file",
         type=str,
         nargs="+",
-        help="Full path to available NWP (ERA5) file(s).",
+        help="Matched NWP (ERA5) file(s) which you want to",
         metavar="NWP_FILE",
-        required=True,
     )
     args = parser.parse_args(args_list)
-    return get_matching_cloudsat_vgac_nwp_files(
-        cfiles=[Path(f) for f in args.cloudsat_files],
-        vfiles=[Path(f) for f in args.vgac_files],
-        nfiles=[Path(f) for f in args.nwp_files],
-    )
 
+    # Check mutual exclusivity
+    options = [
+        args.available_cloudsat_files,
+        args.available_vgac_files,
+        args.available_nwp_files,
+    ]
+    alternatives = [
+        args.matched_cloudsat_file,
+        args.matched_vgac_file,
+        args.matched_nwp_file,
+    ]
 
-# read in command line args and get list of files to process
-cloudsat_files, vgac_files, nwp_files = cli(argv[1:])
+    opt_flag = sum(bool(opt) for opt in options) == 3
+    alt_flag = sum(bool(alt) for alt in alternatives) == 3
+    print(opt_flag, alt_flag)
+    if opt_flag and alt_flag:
+        parser.error(
+            "OBS! Please provide only one set of options"
+            "either [-CPATH, -VPATH, -NPATH] or [-CFILE, -VFILE, -NFILE]"
+        )
+    elif opt_flag:
+        cloudsat_files, vgac_files, nwp_files = get_matching_cloudsat_vgac_nwp_files(
+            cfiles=[Path(f) for f in args.available_cloudsat_files],
+            vfiles=[Path(f) for f in args.available_vgac_files],
+            nfiles=[Path(f) for f in args.available_nwp_files],
+        )
+        if cloudsat_files:
+            for cloudsat_file, vgac_file, nwp_file in zip(
+                cloudsat_files, vgac_files, nwp_files
+            ):
+                print(f"Processing files: {cloudsat_file}, {vgac_file}, {nwp_file}")
+                process(cloudsat_file, vgac_file, nwp_file)
+        else:
+            raise ValueError("Tyvärr! No Matching files found!")
 
-for cloudsat_file, vgac_file, nwp_file in zip(cloudsat_files[4:], vgac_files[4:], nwp_files[4:]):
-    print(cloudsat_file)
-    process(cloudsat_file, vgac_file, nwp_file)
+    elif alt_flag:
+        print(alternatives)
+        process(
+            Path(args.matched_cloudsat_file[0]),
+            Path(args.matched_vgac_file[0]),
+            Path(args.matched_nwp_file[0]),
+        )
+    else:
+        parser.error(
+            "OBS! Options [-CPATH, -VPATH, and -NPATH] must occur together"
+            "or Options [-CFILE, -VFILE, -NFILE] must occur together"
+        )
 
-# Create a multiprocessing Pool
-#with multiprocessing.Pool() as pool:
-#    # Map the function to the list of files
-#    pool.starmap(
-#        process,
-#        zip(cloudsat_files, vgac_files, nwp_files),
-#    )
-
-# process(
-#     INPUT_FILENAMES["CLOUDSAT_FILE"],
-#     INPUT_FILENAMES["VGAC_FILE"],
-#     INPUT_FILENAMES["NWP_FILE"],
-# )
+cli(argv[1:])
