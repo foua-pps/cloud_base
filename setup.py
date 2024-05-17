@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import re
 import setuptools
 
 here = Path(__file__).parent.absolute()
