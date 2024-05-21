@@ -54,7 +54,6 @@ class VGACData:
     M14: np.ndarray
     M15: np.ndarray
     M16: np.ndarray
-    validation_height_base: np.ndarray
     name: str
 
     @classmethod
@@ -83,7 +82,6 @@ class VGACData:
             d.M14.values,
             d.M15.values,
             d.M16.values,
-            np.zeros_like(d.latitude.values),  # initialise the base height,
             os.path.basename(filepath),
         )
 
