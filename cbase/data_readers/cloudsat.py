@@ -5,7 +5,9 @@ from pathlib import Path
 from dataclasses import dataclass
 import pytz
 from pyhdf.SD import SD, SDC
-from pyhdf.HDF import HDF
+from pyhdf.HDF import HDF  # HC
+import xarray as xr
+import pyhdf.VS
 import numpy as np
 
 
@@ -33,46 +35,60 @@ class CloudsatData:
     validation_height_base: np.array
     validation_height: np.array
     cloud_fraction: np.array
-    n_layers: float
+    cloud_layers: np.array
+    vis_optical_depth: np.array
     time: np.array
     name: str
 
     @classmethod
-    def from_file(cls, filepath: Path):
+    def from_files(cls, cldclass_lidar_file: Path, dardar_cloud_file: Path):
         """
         read cloudsat data and
         generate constructor from file
         """
-        csat_dict = read_cloudsat_hdf4(filepath.as_posix())
+        if cldclass_lidar_file and dardar_cloud_file:
+            csat_dict = read_cloudsat_hdf4(cldclass_lidar_file.as_posix())
+            vis_optical_depth = get_vod_from_dardar(dardar_cloud_file.as_posix())
 
-        return cls(
-            csat_dict["Longitude"].ravel(),
-            csat_dict["Latitude"].ravel(),
-            get_base_height(csat_dict["CloudLayerBase"]),
-            get_top_height(csat_dict["CloudLayerTop"]),
-            get_cloud_fraction(csat_dict["Cloudlayer"]),
-            csat_dict["Cloudlayer"].ravel(),
-            get_time(csat_dict),
-            os.path.basename(filepath),
-        )
+            return cls(
+                csat_dict["Longitude"].ravel(),
+                csat_dict["Latitude"].ravel(),
+                get_base_height(csat_dict["CloudLayerBase"]),
+                get_top_height(csat_dict["CloudLayerTop"]),
+                get_cloud_fraction(csat_dict["Cloudlayer"]),
+                csat_dict["Cloudlayer"].ravel(),
+                vis_optical_depth,
+                get_time(csat_dict),
+                os.path.basename(cldclass_lidar_file.as_posix()),
+            )
+        else:
+            raise ValueError(
+                "Both cldclass_lidar_file and dardar_cloudfile need to be provided"
+            )
+
+
+def get_vod_from_dardar(dardarfile: str):
+    """get visible optical depth"""
+    with xr.open_dataset(dardarfile) as dardar:
+        return dardar.vis_optical_depth.values
 
 
 def read_cloudsat_hdf4(filepath: str) -> dict:
     """access variables in a hdf4 file, and dump them all to a dict"""
     all_data = {}
-    h4file = SD(filepath.as_posix(), SDC.READ)
+    h4file = SD(filepath, SDC.READ)
     datasets = h4file.datasets()
 
     for _, sds in enumerate(datasets.keys()):
-        # 2d data
-        all_data[sds] = h4file.select(sds).get()
+        all_data[sds] = np.array(h4file.select(sds).get())
 
     h4file = HDF(filepath, SDC.READ)
     vs = h4file.vstart()
     data_info_list = vs.vdatainfo()
     for item in data_info_list:
         # 1D data compound/Vdata
-        all_data[item[0]] = vs.attach(item[0])[:]
+        name = item[0]
+        all_data[name] = np.array(vs.attach(name)[:])
 
     return all_data
 
@@ -103,7 +119,7 @@ def get_base_height(cbh: np.array) -> np.array:
 
 def get_cloud_fraction(cf: np.array) -> np.array:
     """max cloud fraction in 10 layers"""
-    cf_copy = cf.copy()
+    cf_copy = cf.astype(float)
     cloud_fraction = np.ones(len(cf)) * -9
     all_missing = np.all(cf < 0, axis=1)
     valid_indices = np.argwhere(~all_missing)[:, 0]
