@@ -8,12 +8,15 @@ from cbase.data_readers import cloudsat, viirs, era5
 from cbase.matching.match_vgac_cloudsat_nwp import DataMatcher
 
 
-def process(cloudsat_file: Path, vgac_file: Path, nwp_file: Path):
+def process(
+    cldclass_lidar_file: Path, dardar_file: Path, vgac_file: Path, nwp_file: Path
+):
     """main process"""
     # read in data
+
     vgc = viirs.VGACData.from_file(vgac_file)
     nwp = era5.Era5.from_file(nwp_file)
-    cld = cloudsat.CloudsatData.from_file(cloudsat_file)
+    cld = cloudsat.CloudsatData.from_files(cldclass_lidar_file, dardar_file)
 
     # create matching object
     dm = DataMatcher(cld, vgc, nwp)
@@ -33,8 +36,16 @@ def cli(args_list: list[str]) -> None:
         "--available_cloudsat_files",
         type=str,
         nargs="+",
-        help="Full path to Cloudsat level1b file(s) which you want to process",
+        help="Full path to Cloudsat CLDCLASS_LIDAR file(s) which you want to process",
         metavar="CLOUDSAT_FILES_PATH",
+    )
+    parser.add_argument(
+        "-DPATH",
+        "--available_dardar_files",
+        type=str,
+        nargs="+",
+        help="Full path to DARDAR CLOUD file(s) which you want to process",
+        metavar="DARDAR_FILES_PATH",
     )
     parser.add_argument(
         "-VPATH",
@@ -57,8 +68,16 @@ def cli(args_list: list[str]) -> None:
         "--matched_cloudsat_file",
         type=str,
         nargs="+",
-        help="Matched Cloudsat level1b file(s) which you want to process",
+        help="Matched Cloudsat CLDCLASS_LIDAR which you want to process",
         metavar="CLOUDSAT_FILE",
+    )
+    parser.add_argument(
+        "-DFILE",
+        "--matched_dardar_file",
+        type=str,
+        nargs="+",
+        help="Matched DARDAR CLOUD file which you want to process",
+        metavar="DARDAR_FILE",
     )
     parser.add_argument(
         "-VFILE",
@@ -81,49 +100,61 @@ def cli(args_list: list[str]) -> None:
     # Check mutual exclusivity
     options = [
         args.available_cloudsat_files,
+        args.available_dardar_files,
         args.available_vgac_files,
         args.available_nwp_files,
     ]
     alternatives = [
         args.matched_cloudsat_file,
+        args.matched_dardar_file,
         args.matched_vgac_file,
         args.matched_nwp_file,
     ]
 
-    opt_flag = sum(bool(opt) for opt in options) == 3
-    alt_flag = sum(bool(alt) for alt in alternatives) == 3
-    print(opt_flag, alt_flag)
+    opt_flag = sum(bool(opt) for opt in options) == 4
+    alt_flag = sum(bool(alt) for alt in alternatives) == 4
+
     if opt_flag and alt_flag:
         parser.error(
             "OBS! Please provide only one set of options"
-            "either [-CPATH, -VPATH, -NPATH] or [-CFILE, -VFILE, -NFILE]"
+            "either [-CPATH, -VPATH, -NPATH] or [-CFILE, -DFILE, -VFILE, -NFILE]"
         )
     elif opt_flag:
-        cloudsat_files, vgac_files, nwp_files = get_matching_cloudsat_vgac_nwp_files(
-            cfiles=[Path(f) for f in args.available_cloudsat_files],
-            vfiles=[Path(f) for f in args.available_vgac_files],
-            nfiles=[Path(f) for f in args.available_nwp_files],
+        cloudsat_files, dardar_files, vgac_files, nwp_files = (
+            get_matching_cloudsat_vgac_nwp_files(
+                args.available_cloudsat_files,
+                args.available_dardar_files,
+                args.available_vgac_files,
+                args.available_nwp_files,
+            )
         )
         if cloudsat_files:
-            for cloudsat_file, vgac_file, nwp_file in zip(
-                cloudsat_files, vgac_files, nwp_files
+            for cloudsat_file, dardar_file, vgac_file, nwp_file in zip(
+                cloudsat_files, dardar_files, vgac_files, nwp_files
             ):
-                print(f"Processing files: {cloudsat_file}, {vgac_file}, {nwp_file}")
-                process(cloudsat_file, vgac_file, nwp_file)
+                print(
+                    f"Processing files: {cloudsat_file}, {dardar_file}, {vgac_file}, {nwp_file}"
+                )
+                process(
+                    Path(cloudsat_file),
+                    Path(dardar_file),
+                    Path(vgac_file),
+                    Path(nwp_file),
+                )
         else:
             raise ValueError("Tyvärr! No Matching files found!")
 
     elif alt_flag:
-        print(alternatives)
         process(
             Path(args.matched_cloudsat_file[0]),
+            Path(args.matched_dardar_file[0]),
             Path(args.matched_vgac_file[0]),
             Path(args.matched_nwp_file[0]),
         )
     else:
         parser.error(
-            "OBS! Options [-CPATH, -VPATH, and -NPATH] must occur together"
-            "or Options [-CFILE, -VFILE, -NFILE] must occur together"
+            "OBS! Options [-CPATH, -DPATH, -VPATH, and -NPATH] must occur together"
+            "or Options [-CFILE, -DFILE, -VFILE, -NFILE] must occur together"
         )
 
 
