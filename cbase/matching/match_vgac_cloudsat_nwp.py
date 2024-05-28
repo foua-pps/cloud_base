@@ -127,20 +127,18 @@ class DataMatcher:
             self.cloudsat.time[icld[0] : icld[1]][x_argmin] - self.vgac.time[i]
         )
         tdiff_minutes = np.array([t.seconds / SECS_PER_MINUTE for t in tdiff])
-        # get x and y indices
         valid_indices = np.where(
             self.cloudsat.validation_height_base[icld[0] : icld[1]][x_argmin]
             > 0 & (tdiff_minutes < TIME_DIFF_ALLOWED)
         )[0]
 
         # update height/cf/layers and count number of cloudsat obs used for each VGAC pixel
-        # update base height and count number of cloudsat obs used for each VGAC pixel
-
         for key in [
             "validation_height_base",
             "validation_height",
             "cloud_fraction",
             "cloud_layers",
+            "vis_optical_depth",
         ]:
 
             count_collocations = np.zeros(self.vgac.latitude.shape[1])
@@ -158,18 +156,12 @@ class DataMatcher:
             )
             v_data[i, ~nonzero_indices] = -999.9
             self.collocated_data[key] = v_data
-            # print(
-            #     "2",
-            #     np.sum(nonzero_indices),
-            #     np.sum(self.collocated_data[key][i, :] > 0)
-            #     np.sum(v_data > 0),
-            #     key,
-            # )
 
     def _get_closest_cloudsat_guess(self, itime: int) -> Union[tuple[int, int], None]:
         """
         select part of Cloudsat track crossing the selected VGAC pixel
         """
+        # select part of cloudsat swath within TIME WINDOW
         tmask = (
             self.cloudsat.time
             >= self.vgac.time[itime] + timedelta(minutes=TIME_WINDOW[0])
@@ -179,10 +171,6 @@ class DataMatcher:
         )
         if np.all(~tmask):
             return None
-
-        # # check if the guess can be made from previous iteration
-        # _, iscan = np.where(self.count_collocations[itime - 5 : itime, :] > 0)
-        # if len(iscan) == 0:
 
         index = SWATH_CENTER  # center of swath
         distance = haversine_distance(
@@ -202,17 +190,6 @@ class DataMatcher:
         )
         return (cld_mask[0][0], cld_mask[-1][0])
 
-        # index = iscan[-1]  # last scan position where cloudsat and VGAC intersected
-        # distance = haversine_distance(
-        #     self.vgac.latitude[itime, index],
-        #     self.vgac.longitude[itime, index],
-        #     self.cloudsat.latitude[tmask],
-        #     self.cloudsat.longitude[tmask],
-        # )
-        # argmin = np.argmin(distance)
-        # index = np.arange(0, len(self.cloudsat.time), 1)[tmask][argmin]
-        # return (index - 10, index + 10)
-
     def match_vgac_cloudsat(self):
         """
         For each VGAC scan, matches from Cloudsat are found
@@ -225,6 +202,7 @@ class DataMatcher:
             icld1, icld2 = self._get_closest_cloudsat_guess(itime)
             if np.all(self.cloudsat.validation_height_base[icld1:icld2] < 0):
                 continue
+            # get the matching data for the selected part of swath
             self._process_matching_iteration(itime, [icld1, icld2])
 
     def _bounding_box(self, i: int, j: int):
