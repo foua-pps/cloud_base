@@ -24,6 +24,15 @@ class BaseDate:
         return self.base_date
 
 
+# @dataclass
+# class CloudVariables:
+
+#     cloud_top: np.array
+#     cloud_base: np.array
+#     cloud_layers: np.array
+#     cloud_type: np.array
+
+
 @dataclass
 class CloudsatData:
     """
@@ -32,10 +41,10 @@ class CloudsatData:
 
     longitude: np.array
     latitude: np.array
-    validation_height_base: np.array
-    validation_height: np.array
-    cloud_fraction: np.array
+    cloud_top: np.array
+    cloud_base: np.array
     cloud_layers: np.array
+    cloud_type: np.array
     vis_optical_depth: np.array
     time: np.array
     name: str
@@ -53,10 +62,10 @@ class CloudsatData:
             return cls(
                 csat_dict["Longitude"].ravel(),
                 csat_dict["Latitude"].ravel(),
-                get_base_height(csat_dict["CloudLayerBase"]),
-                get_top_height(csat_dict["CloudLayerTop"]),
-                get_cloud_fraction(csat_dict["Cloudlayer"]),
+                csat_dict["CloudLayerTop"][:, 0],
+                csat_dict["CloudLayerBase"][:, 0],
                 csat_dict["Cloudlayer"].ravel(),
+                csat_dict["CloudLayerType"][:, 0],
                 vis_optical_depth,
                 get_time(csat_dict),
                 os.path.basename(cldclass_lidar_file.as_posix()),
@@ -65,6 +74,16 @@ class CloudsatData:
             raise ValueError(
                 "Both cldclass_lidar_file and dardar_cloudfile need to be provided"
             )
+
+
+# def get_cloud_variables(all_data: dict) -> CloudVariables:
+#     """get variables from CLDCLASS-LIDAR dataset"""
+#     return (
+#         all_data["CloudLayerTop"][:, 0],
+#         all_data["CloudLayerBase"][:, 0],
+#         all_data["Cloudlayer"].ravel(),
+#         all_data["CloudLayerType"][:, 0],
+#     )
 
 
 def get_vod_from_dardar(dardarfile: str):
