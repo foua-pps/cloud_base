@@ -46,9 +46,9 @@ class DataMatcher:
         )
         self.collocated_data = {
             "count_collocations": np.zeros_like(self.vgac.latitude),
-            "validation_height_base": np.zeros_like(self.vgac.latitude),
-            "validation_height": np.zeros_like(self.vgac.latitude),
-            "cloud_fraction": np.zeros_like(self.vgac.latitude),
+            "cloud_base": np.zeros_like(self.vgac.latitude),
+            "cloud_top": np.zeros_like(self.vgac.latitude),
+            "cloud_type": np.zeros_like(self.vgac.latitude),
             "cloud_layers": np.zeros_like(self.vgac.latitude),
             "vis_optical_depth": np.zeros_like(self.vgac.latitude),
         }
@@ -76,35 +76,23 @@ class DataMatcher:
         broadcast lat/lon arrays to 2d to enable vectorized calculation
         of distances
         """
+
+        def _broadcast(arr, shape1, shape2):
+            return np.broadcast_to(arr, (shape1, shape2))
+
         icld1, icld2 = icld[0], icld[1]
-        lon_c = np.broadcast_to(
-            self.cloudsat.longitude[icld1:icld2].reshape(-1, 1),
-            (
-                self.cloudsat.longitude[icld1:icld2].shape[0],
-                self.vgac.longitude[i, :].shape[0],
-            ),
+        shape1 = self.cloudsat.longitude[icld1:icld2].shape[0]
+        shape2 = self.vgac.longitude[i, :].shape[0]
+
+        lon_c = _broadcast(
+            self.cloudsat.longitude[icld1:icld2].reshape(-1, 1), shape1, shape2
         )
-        lat_c = np.broadcast_to(
-            self.cloudsat.latitude[icld1:icld2].reshape(-1, 1),
-            (
-                self.cloudsat.latitude[icld1:icld2].shape[0],
-                self.vgac.latitude[i, :].shape[0],
-            ),
+        lat_c = _broadcast(
+            self.cloudsat.latitude[icld1:icld2].reshape(-1, 1), shape1, shape2
         )
-        lon_v = np.broadcast_to(
-            self.vgac.longitude[i, :].reshape(1, -1),
-            (
-                self.cloudsat.longitude[icld1:icld2].shape[0],
-                self.vgac.longitude[i, :].shape[0],
-            ),
-        )
-        lat_v = np.broadcast_to(
-            self.vgac.latitude[i, :].reshape(1, -1),
-            (
-                self.cloudsat.latitude[icld1:icld2].shape[0],
-                self.vgac.latitude[i, :].shape[0],
-            ),
-        )
+        lon_v = _broadcast(self.vgac.longitude[i, :].reshape(1, -1), shape1, shape2)
+        lat_v = _broadcast(self.vgac.latitude[i, :].reshape(1, -1), shape1, shape2)
+
         return lon_c, lat_c, lon_v, lat_v
 
     def _process_matching_iteration(self, i: int, icld: tuple[int, int]):
@@ -127,34 +115,37 @@ class DataMatcher:
             self.cloudsat.time[icld[0] : icld[1]][x_argmin] - self.vgac.time[i]
         )
         tdiff_minutes = np.array([t.seconds / SECS_PER_MINUTE for t in tdiff])
+        # find indices where values are greater than zero
         valid_indices = np.where(
-            self.cloudsat.validation_height_base[icld[0] : icld[1]][x_argmin]
+            self.cloudsat.cloud_base[icld[0] : icld[1]][x_argmin]
             > 0 & (tdiff_minutes < TIME_DIFF_ALLOWED)
         )[0]
 
         # update height/cf/layers and count number of cloudsat obs used for each VGAC pixel
-        for key in [
-            "validation_height_base",
-            "validation_height",
-            "cloud_fraction",
-            "cloud_layers",
-            "vis_optical_depth",
-        ]:
+        for key in ["cloud_top", "cloud_base", "cloud_layers", "cloud_type"]:
 
             count_collocations = np.zeros(self.vgac.latitude.shape[1])
             v_data = self.collocated_data[key]
             c_data = getattr(self.cloudsat, key)
-            for valid_index in valid_indices:
-                v_data[i, :][y_argmin[valid_index]] += c_data[icld[0] : icld[1]][
-                    x_argmin[valid_index]
-                ]
-                count_collocations[y_argmin[valid_index]] += 1
 
-            nonzero_indices = count_collocations > 0
-            v_data[i, nonzero_indices] = (
-                v_data[i, nonzero_indices] / count_collocations[nonzero_indices]
-            )
-            v_data[i, ~nonzero_indices] = -999.9
+            for valid_index in valid_indices:
+                if key in ["cloud_layers", "cloud_type"]:
+                    # nearest fashion
+                    v_data[i, :][y_argmin[valid_index]] = c_data[icld[0] : icld[1]][
+                        x_argmin[valid_index]
+                    ]
+                else:
+                    v_data[i, :][y_argmin[valid_index]] += c_data[icld[0] : icld[1]][
+                        x_argmin[valid_index]
+                    ]
+                    count_collocations[y_argmin[valid_index]] += 1
+
+            if key not in ["cloud_layers", "cloud_type"]:
+                nonzero_indices = count_collocations > 0
+                v_data[i, nonzero_indices] = (
+                    v_data[i, nonzero_indices] / count_collocations[nonzero_indices]
+                )
+                v_data[i, ~nonzero_indices] = -999.9
             self.collocated_data[key] = v_data
 
     def _get_closest_cloudsat_guess(self, itime: int) -> Union[tuple[int, int], None]:
@@ -200,7 +191,7 @@ class DataMatcher:
             if self._get_closest_cloudsat_guess(itime) is None:
                 continue
             icld1, icld2 = self._get_closest_cloudsat_guess(itime)
-            if np.all(self.cloudsat.validation_height_base[icld1:icld2] < 0):
+            if np.all(self.cloudsat.cloud_top[icld1:icld2] < 0):
                 continue
             # get the matching data for the selected part of swath
             self._process_matching_iteration(itime, [icld1, icld2])
@@ -231,44 +222,13 @@ class DataMatcher:
         and collect data into a xarray dataset
         """
 
-        def _make_dataset(
-            lists_vgac_data: dict, lists_collocated_data: dict, lists_nwp_data: dict
-        ) -> xr.Dataset:
-            ds = xr.Dataset()
-
-            nscene = np.arange(len(lists_vgac_data["latitude"]))
-            npix = np.arange(IMAGE_SIZE)
-            nscan = np.arange(IMAGE_SIZE)
-            for parameter in CNN_VGAC_PARAMETERS:
-                ds[parameter] = xr.DataArray(
-                    np.stack(lists_vgac_data[parameter]),
-                    dims=("nscene", "npix", "nscan"),
-                    coords={"npix": npix, "nscan": nscan, "nscene": nscene},
-                )
-            for parameter in CNN_MATCHED_PARAMETERS:
-                ds[parameter] = xr.DataArray(
-                    np.stack(lists_collocated_data[parameter]),
-                    dims=("nscene", "npix", "nscan"),
-                    coords={"npix": npix, "nscan": nscan, "nscene": nscene},
-                )
-            for parameter in CNN_NWP_PARAMETERS:
-                ds[parameter] = xr.DataArray(
-                    np.stack(lists_nwp_data[parameter]),
-                    dims=("nscene", "npix", "nscan"),
-                    coords={"npix": npix, "nscan": nscan, "nscene": nscene},
-                )
-
-            return ds
-
         lists_vgac_data = {name: [] for name in CNN_VGAC_PARAMETERS}
         lists_collocated_data = {name: [] for name in CNN_MATCHED_PARAMETERS}
         lists_nwp_data = {name: [] for name in CNN_NWP_PARAMETERS}
 
         inum = 0
         for ipix in range(0, len(self.vgac.time), IMAGE_SIZE):
-            iscan = np.where(
-                self.collocated_data["validation_height_base"][ipix, :] > 0
-            )[0]
+            iscan = np.where(self.collocated_data["cloud_top"][ipix, :] > 0)[0]
             if len(iscan) > 0:
                 iscan = iscan[0]
                 box = self._bounding_box(ipix, iscan)
@@ -292,7 +252,36 @@ class DataMatcher:
                         )  # projection to regrid ERA5 data
                         values.append(self._interpolate_nwp_data(parameter, projection))
                     inum += 1
-        ds = _make_dataset(lists_vgac_data, lists_collocated_data, lists_nwp_data)
+        ds = self._make_dataset(lists_vgac_data, lists_collocated_data, lists_nwp_data)
 
         if to_file is True:
             ds.to_netcdf(self.out_filename)
+
+    def _make_dataset(
+        self, lists_vgac_data: dict, lists_collocated_data: dict, lists_nwp_data: dict
+    ) -> xr.Dataset:
+        ds = xr.Dataset()
+
+        nscene = np.arange(len(lists_vgac_data["latitude"]))
+        npix = np.arange(IMAGE_SIZE)
+        nscan = np.arange(IMAGE_SIZE)
+        for parameter in CNN_VGAC_PARAMETERS:
+            ds[parameter] = xr.DataArray(
+                np.stack(lists_vgac_data[parameter]),
+                dims=("nscene", "npix", "nscan"),
+                coords={"npix": npix, "nscan": nscan, "nscene": nscene},
+            )
+        for parameter in CNN_MATCHED_PARAMETERS:
+            ds[parameter] = xr.DataArray(
+                np.stack(lists_collocated_data[parameter]),
+                dims=("nscene", "npix", "nscan"),
+                coords={"npix": npix, "nscan": nscan, "nscene": nscene},
+            )
+        for parameter in CNN_NWP_PARAMETERS:
+            ds[parameter] = xr.DataArray(
+                np.stack(lists_nwp_data[parameter]),
+                dims=("nscene", "npix", "nscan"),
+                coords={"npix": npix, "nscan": nscan, "nscene": nscene},
+            )
+
+        return ds
