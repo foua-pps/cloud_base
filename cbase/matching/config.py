@@ -1,6 +1,5 @@
 I1, I2 = 0, 800  # index to select the part of scan where collocations can lie
 COLLOCATION_THRESHOLD = 4  # km
-SWATH_CENTER = 400  # VGAC SWATH CENTER
 TIME_WINDOW = [-80, 80]
 IMAGE_SIZE = 32
 PADDING = 1.0  # some extra margin when interpolating ERA5 (in degrees)
@@ -67,4 +66,6 @@ CNN_MATCHED_PARAMETERS = [
     "cloud_base",
     "cloud_layers",
     "vis_optical_depth",
+    "flag_base",
+    "cloud_fraction",
 ]
