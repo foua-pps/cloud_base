@@ -24,15 +24,6 @@ class BaseDate:
         return self.base_date
 
 
-# @dataclass
-# class CloudVariables:
-
-#     cloud_top: np.array
-#     cloud_base: np.array
-#     cloud_layers: np.array
-#     cloud_type: np.array
-
-
 @dataclass
 class CloudsatData:
     """
@@ -44,7 +35,7 @@ class CloudsatData:
     cloud_top: np.array
     cloud_base: np.array
     cloud_layers: np.array
-    cloud_type: np.array
+    flag_base: np.array
     cloud_fraction: np.array
     vis_optical_depth: np.array
     time: np.array
@@ -63,7 +54,7 @@ class CloudsatData:
             return cls(
                 csat_dict["Longitude"].ravel(),
                 csat_dict["Latitude"].ravel(),
-                get_cloud_top(csat_dict)
+                get_cloud_top(csat_dict),
                 csat_dict["LayerBase"][:, 0],  # base height of bottommost layer
                 csat_dict["CloudLayers"].ravel(),
                 csat_dict["FlagBase"][:, 0],  # which instrument gives base height
@@ -78,9 +69,12 @@ class CloudsatData:
                 "Both cldclass_lidar_file and dardar_cloudfile need to be provided"
             )
 
+
 def get_cloud_top(csat_dict):
     nlayers = csat_dict["CloudLayers"].ravel()
     cth = csat_dict["LayerTop"][:, nlayers]
+
+
 # def get_cloud_variables(all_data: dict) -> CloudVariables:
 #     """get variables from CLDCLASS-LIDAR dataset"""
 #     return (
