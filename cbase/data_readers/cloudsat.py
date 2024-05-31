@@ -45,6 +45,7 @@ class CloudsatData:
     cloud_base: np.array
     cloud_layers: np.array
     cloud_type: np.array
+    cloud_fraction: np.array
     vis_optical_depth: np.array
     time: np.array
     name: str
@@ -62,10 +63,12 @@ class CloudsatData:
             return cls(
                 csat_dict["Longitude"].ravel(),
                 csat_dict["Latitude"].ravel(),
-                csat_dict["CloudLayerTop"][:, 0],
-                csat_dict["CloudLayerBase"][:, 0],
-                csat_dict["Cloudlayer"].ravel(),
-                csat_dict["CloudLayerType"][:, 0],
+                get_cloud_top(csat_dict)
+                csat_dict["LayerBase"][:, 0],  # base height of bottommost layer
+                csat_dict["CloudLayers"].ravel(),
+                csat_dict["FlagBase"][:, 0],  # which instrument gives base height
+                get_cloud_fraction(csat_dict["CloudFraction"]),
+                # csat_dict["CloudLayerType"][:, 0],
                 vis_optical_depth,
                 get_time(csat_dict),
                 os.path.basename(cldclass_lidar_file.as_posix()),
@@ -75,7 +78,9 @@ class CloudsatData:
                 "Both cldclass_lidar_file and dardar_cloudfile need to be provided"
             )
 
-
+def get_cloud_top(csat_dict):
+    nlayers = csat_dict["CloudLayers"].ravel()
+    cth = csat_dict["LayerTop"][:, nlayers]
 # def get_cloud_variables(all_data: dict) -> CloudVariables:
 #     """get variables from CLDCLASS-LIDAR dataset"""
 #     return (
@@ -112,32 +117,8 @@ def read_cloudsat_hdf4(filepath: str) -> dict:
     return all_data
 
 
-def get_top_height(cth: np.array) -> np.array:
-    """get height of highest cloud out of 10 layers"""
-    cth_copy = cth.copy()
-    top_height = np.ones(len(cth)) * -9
-    all_missing = np.all(cth < 0, axis=1)
-    valid_indices = np.argwhere(~all_missing)[:, 0]
-    cth_copy[cth < 0] = np.nan
-    top_height[valid_indices] = np.nanmax(cth_copy[valid_indices, :], axis=1)
-
-    return top_height
-
-
-def get_base_height(cbh: np.array) -> np.array:
-    """get height of lowest cloud out of 10 layers"""
-    cbh_copy = cbh.copy()
-    base_height = np.ones(len(cbh)) * -9
-    all_missing = np.all(cbh < 0, axis=1)
-    valid_indices = np.argwhere(~all_missing)[:, 0]
-    cbh_copy[cbh < 0] = np.nan
-    base_height[valid_indices] = np.nanmin(cbh_copy[valid_indices, :], axis=1)
-
-    return base_height
-
-
 def get_cloud_fraction(cf: np.array) -> np.array:
-    """max cloud fraction in 10 layers"""
+    """max cloud fraction in multiple layers"""
     cf_copy = cf.astype(float)
     cloud_fraction = np.ones(len(cf)) * -9
     all_missing = np.all(cf < 0, axis=1)
