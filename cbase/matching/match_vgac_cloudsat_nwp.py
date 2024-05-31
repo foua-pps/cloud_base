@@ -16,7 +16,6 @@ from .config import (
     CNN_NWP_PARAMETERS,
     CNN_VGAC_PARAMETERS,
     CNN_MATCHED_PARAMETERS,
-    SWATH_CENTER,
     TIME_DIFF_ALLOWED,
     SECS_PER_MINUTE,
     OUTPUT_PATH,
@@ -52,14 +51,10 @@ class DataMatcher:
 
     def initialize_collocated_data(self) -> dict:
         """Initialize the collocated data dictionary"""
-        return {
-            "count_collocations": np.zeros_like(self.vgac.latitude),
-            "cloud_base": np.zeros_like(self.vgac.latitude),
-            "cloud_top": np.zeros_like(self.vgac.latitude),
-            "cloud_type": np.ones_like(self.vgac.latitude) * -999.9,
-            "cloud_layers": np.ones_like(self.vgac.latitude) * -999.9,
-            "vis_optical_depth": np.zeros_like(self.vgac.latitude),
-        }
+        collocated_dict = {}
+        for key in CNN_MATCHED_PARAMETERS:
+            collocated_dict[key] = np.ones_like(self.vgac.latitude) * -999.9
+        return collocated_dict
 
     def check_overlapping_time(self) -> bool:
         """
@@ -168,7 +163,7 @@ class DataMatcher:
         # select part of cloudsat swath within TIME WINDOW
         tmask = self.get_tmask(itime)
         if len(tmask) > 0:
-            index = SWATH_CENTER  # center of swath
+            index = int(self.vgac.latitude.shape[1] / 2)  # center of swath
             distance = haversine_distance(
                 self.vgac.latitude[itime, index],
                 self.vgac.longitude[itime, index],
