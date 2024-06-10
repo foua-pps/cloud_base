@@ -54,7 +54,7 @@ class CloudsatData:
             return cls(
                 csat_dict["Longitude"].ravel(),
                 csat_dict["Latitude"].ravel(),
-                get_cloud_top(csat_dict),
+                get_top_height(csat_dict["LayerTop"]),
                 csat_dict["LayerBase"][:, 0],  # base height of bottommost layer
                 csat_dict["CloudLayers"].ravel(),
                 csat_dict["FlagBase"][:, 0],  # which instrument gives base height
@@ -64,25 +64,22 @@ class CloudsatData:
                 get_time(csat_dict),
                 os.path.basename(cldclass_lidar_file.as_posix()),
             )
-        else:
-            raise ValueError(
-                "Both cldclass_lidar_file and dardar_cloudfile need to be provided"
-            )
+
+        raise ValueError(
+            "Both cldclass_lidar_file and dardar_cloudfile need to be provided"
+        )
 
 
-def get_cloud_top(csat_dict):
-    nlayers = csat_dict["CloudLayers"].ravel()
-    cth = csat_dict["LayerTop"][:, nlayers]
+def get_top_height(cth: np.array) -> np.array:
+    """get height of highest cloud out of n layers"""
+    print(cth.min(), cth.max())
+    cth_copy = cth.copy()
+    top_height = np.ones(len(cth)) * -9
+    all_missing = np.all(cth < 0, axis=1)
+    valid_indices = np.argwhere(~all_missing)[:, 0]
+    top_height[valid_indices] = np.max(cth_copy[valid_indices, :], axis=1)
 
-
-# def get_cloud_variables(all_data: dict) -> CloudVariables:
-#     """get variables from CLDCLASS-LIDAR dataset"""
-#     return (
-#         all_data["CloudLayerTop"][:, 0],
-#         all_data["CloudLayerBase"][:, 0],
-#         all_data["Cloudlayer"].ravel(),
-#         all_data["CloudLayerType"][:, 0],
-#     )
+    return top_height
 
 
 def get_vod_from_dardar(dardarfile: str):
