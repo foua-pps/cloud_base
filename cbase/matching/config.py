@@ -40,6 +40,7 @@ CNN_NWP_PARAMETERS = [
     "snow_mask",
     "t_sea",
     "t_land",
+    "ice_mask",
 ]
 CNN_VGAC_PARAMETERS = [
     "latitude",

@@ -213,11 +213,10 @@ class DataMatcher:
         self, parameter: str, projection: tuple[np.ndarray, np.ndarray]
     ) -> np.ndarray:
 
-        if parameter not in CNN_NWP_PARAMETERS:
-            raise ValueError(
-                f"the NWP paramter: {parameter} is not present in gribfile"
-            )
-        return self.era5.get_data(parameter, projection)
+        try:
+            return self.era5.get_data(parameter, projection)
+        except Exception as e:
+            return np.ones_like([projection[0].size, projection[1].size]) * -999.9
 
     def _make_cnn_data_matched_parameters(
         self, lists_collocated_data: dict, box: BoundingBox
