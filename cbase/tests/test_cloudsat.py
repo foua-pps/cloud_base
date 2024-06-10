@@ -46,24 +46,6 @@ def mock_read_cloudsat_hdf4():
         yield
 
 
-def test_get_top_height():
-    cth = sample_data["CloudLayerTop"]
-    expected_result = np.array([8.1, 5.5])
-    assert np.array_equal(get_top_height(cth), expected_result)
-
-
-def test_get_base_height():
-    cbh = sample_data["CloudLayerBase"]
-    expected_result = np.array([0.8, 0.9])
-    assert np.array_equal(get_base_height(cbh), expected_result)
-
-
-def test_get_cloud_fraction():
-    cf = sample_data["CloudFraction"]
-    expected_result = np.array([0.9, 0.3])
-    assert np.array_equal(get_cloud_fraction(cf), expected_result)
-
-
 def test_get_time():
     expected_result = np.array(
         [

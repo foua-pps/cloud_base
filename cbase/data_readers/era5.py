@@ -9,16 +9,24 @@ from pps_nwp.gribfile import GRIBFile
 class PressureLevels(Enum):
     """Enum representing pressure levels"""
 
+    T100 = 100
     T250 = 250  # hPa
+    T400 = 400
     T500 = 500
     T700 = 700
     T850 = 850
     T900 = 900
+    T950 = 950
+    T1000 = 1000
+    Q100 = 100
     Q250 = 250  # hPa
+    Q400 = 400
     Q500 = 500
     Q700 = 700
     Q850 = 850
     Q900 = 900
+    Q950 = 950
+    Q1000 = 1000
 
 
 @dataclass
@@ -61,10 +69,36 @@ class Era5:
             values = self.grb.get_h_2meter()[:]
         elif parameter == "PressureLevels":
             values = self.grb.get_p_vertical()[:]
-        elif parameter in ["t250", "t500", "t700", "t850", "t900"]:
+        elif parameter in [
+            "t100",
+            "t250",
+            "t400",
+            "t500",
+            "t700",
+            "t850",
+            "t900",
+            "t950",
+            "t1000",
+        ]:
             values = self.grb.get_t_pressure(PressureLevels[parameter.upper()].value)[:]
-        elif parameter in ["q250", "q500", "q700", "q850", "q900"]:
+        elif parameter in [
+            "q100",
+            "q250",
+            "q400",
+            "q500",
+            "q700",
+            "q850",
+            "q900",
+            "q950",
+            "q1000",
+        ]:
             values = self.grb.get_q_pressure(PressureLevels[parameter.upper()].value)[:]
+        elif parameter == "snow_mask":
+            values = self.grb.get_snow_depth()[:]
+        elif parameter == "t_land":
+            values = self.grb.get_t_land()[:]
+        elif parameter == "t_sea":
+            values = self.grb.get_t_sea()[:]
         if values is not None:
             return values
         raise ValueError("Invalid parameter name")

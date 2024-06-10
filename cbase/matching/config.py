@@ -1,6 +1,5 @@
 I1, I2 = 0, 800  # index to select the part of scan where collocations can lie
 COLLOCATION_THRESHOLD = 4  # km
-SWATH_CENTER = 400  # VGAC SWATH CENTER
 TIME_WINDOW = [-80, 80]
 IMAGE_SIZE = 32
 PADDING = 1.0  # some extra margin when interpolating ERA5 (in degrees)
@@ -20,16 +19,28 @@ CNN_NWP_PARAMETERS = [
     "ciwv",
     "tclw",
     # "pressure_levels",
+    "t100",
     "t250",
+    "t400",
     "t500",
     "t700",
     "t850",
     "t900",
+    "t950",
+    "t1000",
+    "q100",
     "q250",
+    "q400",
     "q500",
     "q700",
     "q850",
     "q900",
+    "q950",
+    "q1000",
+    "snow_mask",
+    "t_sea",
+    "t_land",
+    "ice_mask",
 ]
 CNN_VGAC_PARAMETERS = [
     "latitude",
@@ -52,9 +63,10 @@ CNN_VGAC_PARAMETERS = [
     "M16",
 ]
 CNN_MATCHED_PARAMETERS = [
-    "validation_height_base",
-    "validation_height",
-    "cloud_fraction",
+    "cloud_top",
+    "cloud_base",
     "cloud_layers",
     "vis_optical_depth",
+    "flag_base",
+    "cloud_fraction",
 ]

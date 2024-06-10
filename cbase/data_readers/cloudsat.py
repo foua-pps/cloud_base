@@ -32,10 +32,11 @@ class CloudsatData:
 
     longitude: np.array
     latitude: np.array
-    validation_height_base: np.array
-    validation_height: np.array
-    cloud_fraction: np.array
+    cloud_top: np.array
+    cloud_base: np.array
     cloud_layers: np.array
+    flag_base: np.array
+    cloud_fraction: np.array
     vis_optical_depth: np.array
     time: np.array
     name: str
@@ -53,18 +54,32 @@ class CloudsatData:
             return cls(
                 csat_dict["Longitude"].ravel(),
                 csat_dict["Latitude"].ravel(),
-                get_base_height(csat_dict["CloudLayerBase"]),
-                get_top_height(csat_dict["CloudLayerTop"]),
-                get_cloud_fraction(csat_dict["Cloudlayer"]),
-                csat_dict["Cloudlayer"].ravel(),
+                get_top_height(csat_dict["LayerTop"]),
+                csat_dict["LayerBase"][:, 0],  # base height of bottommost layer
+                csat_dict["CloudLayers"].ravel(),
+                csat_dict["FlagBase"][:, 0],  # which instrument gives base height
+                get_cloud_fraction(csat_dict["CloudFraction"]),
+                # csat_dict["CloudLayerType"][:, 0],
                 vis_optical_depth,
                 get_time(csat_dict),
                 os.path.basename(cldclass_lidar_file.as_posix()),
             )
-        else:
-            raise ValueError(
-                "Both cldclass_lidar_file and dardar_cloudfile need to be provided"
-            )
+
+        raise ValueError(
+            "Both cldclass_lidar_file and dardar_cloudfile need to be provided"
+        )
+
+
+def get_top_height(cth: np.array) -> np.array:
+    """get height of highest cloud out of n layers"""
+    print(cth.min(), cth.max())
+    cth_copy = cth.copy()
+    top_height = np.ones(len(cth)) * -9
+    all_missing = np.all(cth < 0, axis=1)
+    valid_indices = np.argwhere(~all_missing)[:, 0]
+    top_height[valid_indices] = np.max(cth_copy[valid_indices, :], axis=1)
+
+    return top_height
 
 
 def get_vod_from_dardar(dardarfile: str):
@@ -93,32 +108,8 @@ def read_cloudsat_hdf4(filepath: str) -> dict:
     return all_data
 
 
-def get_top_height(cth: np.array) -> np.array:
-    """get height of highest cloud out of 10 layers"""
-    cth_copy = cth.copy()
-    top_height = np.ones(len(cth)) * -9
-    all_missing = np.all(cth < 0, axis=1)
-    valid_indices = np.argwhere(~all_missing)[:, 0]
-    cth_copy[cth < 0] = np.nan
-    top_height[valid_indices] = np.nanmax(cth_copy[valid_indices, :], axis=1)
-
-    return top_height
-
-
-def get_base_height(cbh: np.array) -> np.array:
-    """get height of lowest cloud out of 10 layers"""
-    cbh_copy = cbh.copy()
-    base_height = np.ones(len(cbh)) * -9
-    all_missing = np.all(cbh < 0, axis=1)
-    valid_indices = np.argwhere(~all_missing)[:, 0]
-    cbh_copy[cbh < 0] = np.nan
-    base_height[valid_indices] = np.nanmin(cbh_copy[valid_indices, :], axis=1)
-
-    return base_height
-
-
 def get_cloud_fraction(cf: np.array) -> np.array:
-    """max cloud fraction in 10 layers"""
+    """max cloud fraction in multiple layers"""
     cf_copy = cf.astype(float)
     cloud_fraction = np.ones(len(cf)) * -9
     all_missing = np.all(cf < 0, axis=1)
