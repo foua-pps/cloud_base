@@ -129,12 +129,13 @@ class DataMatcher:
         """update height/cf/layers and count number of cloudsat obs used for each VGAC pixel"""
 
         def _interpolate_nearest(x, y, z, x_new, y_new):
-            return NearestNDInterpolator(list(zip(x, y)), z)(x_new, y_new)
+            return NearestNDInterpolator(np.vstack([x, y]).T, z)(
+                np.vstack((x_new, y_new)).T
+            )
 
         for key in CNN_MATCHED_PARAMETERS:
             c_data = getattr(self.cloudsat, key)
             v_data = self.collocated_data[key]
-
             v_data[i, :][iy] = _interpolate_nearest(
                 self.cloudsat.latitude[icld[0] : icld[1]][ix],
                 self.cloudsat.longitude[icld[0] : icld[1]][ix],
@@ -192,6 +193,7 @@ class DataMatcher:
             if self.get_index_closest_cloudsat_track(itime) is None:
                 continue
             icld1, icld2 = self.get_index_closest_cloudsat_track(itime)
+
             if np.all(self.cloudsat.cloud_top[icld1:icld2] < 0):
                 continue
             # get the matching data for the selected part of swath
