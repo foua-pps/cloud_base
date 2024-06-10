@@ -7,6 +7,7 @@ from cbase.matching.match_csat_vgac_nwp_filenames import (
 from cbase.data_readers import cloudsat, viirs, era5
 from cbase.matching.match_vgac_cloudsat_nwp import DataMatcher
 
+# python run_process.py -CPATH /home/a002602/data/cloud_base/cloudsat/*20183*CLDCLASS-LIDAR* -DPATH /home/a002602/data/cloud_base/dardar/* -VPATH /home/a002602/data/cloud_base/vgac/* -NPATH /home/a002602/data/cloud_base/NWP/*
 
 def process(
     cldclass_lidar_file: Path, dardar_file: Path, vgac_file: Path, nwp_file: Path
