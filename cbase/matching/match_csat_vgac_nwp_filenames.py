@@ -1,5 +1,4 @@
 import re
-from pathlib import Path
 from sys import argv
 import argparse
 from datetime import datetime, timedelta
@@ -22,12 +21,12 @@ def create_datetime_from_year_doy_hour_minute(
 
 
 def get_cloudsat_time(
-    cloudsat_file: Path,
+    cloudsat_file: str,
 ) -> datetime:
     """get CSAT orbit time"""
     try:
         pattern = r"(\d{13})_(\d{5})"
-        match = re.search(pattern, cloudsat_file.stem)
+        match = re.search(pattern, cloudsat_file)
 
         year = match.group(1)[:4]
         doy = match.group(1)[4:7]
@@ -43,11 +42,11 @@ def get_cloudsat_time(
         ) from exc
 
 
-def get_vgac_time(vgac_file: Path) -> datetime:
+def get_vgac_time(vgac_file: str) -> datetime:
     """get VGAC orbit time"""
     try:
         pattern = r"(\d{7})_(\d{4})"
-        match = re.search(pattern, vgac_file.stem)
+        match = re.search(pattern, vgac_file)
         year = match.group(1)[:4]
         doy = match.group(1)[4:7]
         hour = match.group(2)[0:2]
@@ -70,47 +69,55 @@ def is_valid_match(ctime: datetime, vtime: datetime) -> bool:
 
 
 def _find_matching_files(ctime, files: list, key: str) -> list:
-    """Find matching VGAC/NWP files"""
+    """Find matching DARDAR/VGAC/NWP files"""
 
     def _matching_string(time: datetime, key: str):
-        if key in ["vgac", "nwp"]:
+        if key in ["vgac", "nwp", "dardar"]:
             if key == "vgac":
                 return time.strftime("%Y%j_%H")
             if key == "nwp":
                 return time.strftime("%Y%m%d%H")
-        raise ValueError("please check key, only one of ['vgac', 'nwp'] are allowed")
+            if key == "dardar":
+                return time.strftime("%Y%j%H%M")
+        raise ValueError(
+            "please check key, only one of ['vgac', 'nwp', 'dardar'] are allowed"
+        )
 
     matched_files = []
-    matched_files += [
-        file for file in files if _matching_string(ctime, key) in file.stem
-    ]
+    matched_files += [file for file in files if _matching_string(ctime, key) in file]
 
-    # also add in files from prev hour
-    prev_hour = ctime - timedelta(hours=1)
-    matched_files += [
-        file for file in files if _matching_string(prev_hour, key) in file.stem
-    ]
+    if key in ["vgac", "nwp"]:
+        # also add in files from prev hour
+        prev_hour = ctime - timedelta(hours=1)
+        matched_files += [
+            file for file in files if _matching_string(prev_hour, key) in file
+        ]
     return matched_files
 
 
 def get_matching_cloudsat_vgac_nwp_files(
-    cfiles: list, vfiles: list, nfiles: list
+    cfiles: list, dfiles: list, vfiles: list, nfiles: list
 ) -> tuple[list, list, list]:
-    """get matching VGAC filename for CSAT orbit file"""
+    """get matching VGAC/NWP/DARDAR filename for CSAT orbit file"""
     matched_vfiles = []
     matched_cfiles = []
     matched_nfiles = []
+    matched_dfiles = []
     for cfile in cfiles:
+        print(cfile)
         ctime = get_cloudsat_time(cfile)
+        d_matches = _find_matching_files(ctime, dfiles, "dardar")
         v_matches = _find_matching_files(ctime, vfiles, "vgac")
         n_matches = _find_matching_files(ctime, nfiles, "nwp")
 
-        if v_matches and n_matches:
+        if v_matches and n_matches and d_matches:
             for vfile, nfile in zip(v_matches, n_matches):
+                # check for closest VGAC file
                 vtime = get_vgac_time(vfile)
                 if is_valid_match(ctime, vtime):
                     matched_vfiles.append(vfile)
                     matched_cfiles.append(cfile)
+                    matched_dfiles.append(d_matches[0])
                     matched_nfiles.append(nfile)
                 break
-    return matched_cfiles, matched_vfiles, matched_nfiles
+    return matched_cfiles, matched_dfiles, matched_vfiles, matched_nfiles
