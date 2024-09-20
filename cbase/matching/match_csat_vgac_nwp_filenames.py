@@ -45,16 +45,31 @@ def get_cloudsat_time(
 def get_vgac_time(vgac_file: str) -> datetime:
     """get VGAC orbit time"""
     try:
-        pattern = r"(\d{7})_(\d{4})"
-        match = re.search(pattern, vgac_file)
-        year = match.group(1)[:4]
-        doy = match.group(1)[4:7]
-        hour = match.group(2)[0:2]
-        minutes = match.group(2)[2:4]
-        vtime = create_datetime_from_year_doy_hour_minute(
-            int(year), int(doy), int(hour), int(minutes)
-        )
-        return vtime
+        if vgac_file[:4] == "VGAC":
+            pattern = r"(\d{7})_(\d{4})"
+            match = re.search(pattern, vgac_file)
+            year = match.group(1)[:4]
+            doy = match.group(1)[4:7]
+            hour = match.group(2)[0:2]
+            minutes = match.group(2)[2:4]
+            vtime = create_datetime_from_year_doy_hour_minute(
+                int(year), int(doy), int(hour), int(minutes)
+            )
+            return vtime
+        elif vgac_file[:4] == "S_NWC":
+            pattern = r"(\d{17})_(\d{17})"
+            match = re.search(pattern, vgac_file)
+            year = match.group(1)[:4]
+            month = match.group(1)[4:6]
+            day = match.group(1)[6:8]
+            hour = match.group(1)[9:11]
+            minutes = match.group(1)[11:13]
+            seconds = match.group(1)[13:15]
+            vtime = datetime(year, month, day, hour, minutes, seconds)
+            return vtime
+        else:
+            raise ValueError(f"This VIIRs files is not supported, {vgac_file}")
+
     except Exception as exc:
         raise ValueError(
             f"the pattern is of type *2018150_0136*, check file name: {vgac_file}"
