@@ -99,7 +99,6 @@ class VGACData_PPS:
     latitude: np.ndarray
     time: np.ndarray
     validation_height_base: np.ndarray
-    cloud_top: np.ndarray
     M05: np.ndarray
     M07: np.ndarray
     M15: np.ndarray
@@ -113,65 +112,70 @@ class VGACData_PPS:
     cmic_phase: np.ndarray
     cmic_lwp: np.ndarray
     cmic_quality: np.ndarray
-    
 
+    @classmethod
+    def from_file(cls, filepath: Path):
+        """read data from netCDF file"""
+        with xr.open_dataset(filepath, decode_times=False) as da:
+            validation_height_base = -999.9 * np.ones_like(da.lat.values)
+            # time = datetime64_to_datetime(da.scanline_timestamps.values)
+            time = da.scanline_timestamps.values
+        pps_data = get_pps_data(filepath)
+        vgac = VGACData_PPS(
+            da.lon.values,
+            da.lat.values,
+            time,
+            validation_height_base,
+            da.image1.values,
+            da.image2.values,
+            da.image3.values,
+            da.image4.values,
+            da.image5.values,
+            extract_pps_parameter(pps_data, "ctth_pres"),
+            extract_pps_parameter(pps_data, "ctth_tempe"),
+            extract_pps_parameter(pps_data, "ctth_quality"),
+            extract_pps_parameter(pps_data, "ct"),
+            extract_pps_parameter(pps_data, "ct_quality"),
+            extract_pps_parameter(pps_data, "cmic_phase"),
+            extract_pps_parameter(pps_data, "cmic_lwp"),
+            extract_pps_parameter(pps_data, "cmic_quality"),
+        )
+        return vgac
 
-def read_vgac(filepath: Path) -> VGACData_PPS:
-    """read data from netCDF file"""
-    with xr.open_dataset(filepath, decode_times=False) as da:
-        validation_height_base = -999.9 * np.ones_like(da.lat.values)
-        time = datetime64_to_datetime(da.scanline_timestamps.values)
-    pps_data = get_pps_data(filepath)
-    vgac = VGACData_PPS(
-        da.lon.values, 
-        da.lat.values, 
-        time,
-        validation_height_base,            
-        da.image1.values,
-        da.image2.values,
-        da.image3.values,
-        da.image4.values,
-        da.image5.values,
-        extract_pps_parameter(pps_data, "ctth_pres"),
-        extract_pps_parameter(pps_data, "ctth_tempe"),
-        extract_pps_parameter(pps_data, "ctth_quality"),
-        extract_pps_parameter(pps_data, "ct"),
-        extract_pps_parameter(pps_data, "ct_quality"),
-        extract_pps_parameter(pps_data, "cmic_phase"),
-        extract_pps_parameter(pps_data, "cmic_lwp"),
-        extract_pps_parameter(pps_data, "cmic_quality"),            
-    )
-    return vgac
 
 def get_pps_data(input_path: Path) -> dict:
-    
-    output_path, ctth_filename, ct_filename, cmic_filename = get_pps_data_files(input_path.as_posix())
+
+    output_path, ctth_filename, ct_filename, cmic_filename = get_pps_data_files(
+        input_path.as_posix()
+    )
     pps_data = {}
     with xr.open_dataset(os.path.join(output_path, ctth_filename)) as da:
-        pps_data["ctth_pres"] = da.ctth_pres.values[1, :, :]
-        pps_data["ctth_tempe"] = da.ctth_tempe.values[1, :, :]
-        pps_data["ctth_quality"] = da.ctth_quality.values[1, :, :]
+        print(da.ctth_pres.values.shape)
+        pps_data["ctth_pres"] = da.ctth_pres.values[0, :, :]
+        pps_data["ctth_tempe"] = da.ctth_tempe.values[0, :, :]
+        pps_data["ctth_quality"] = da.ctth_quality.values[0, :, :]
     with xr.open_dataset(os.path.join(output_path, ct_filename)) as da:
-        pps_data["ct"] = da.ct.values[1, :, :]
-        pps_data["ct_quality"] = da.ct_quality.values[1, :, :]
-    with xr.open_dataset(os.path.join(output_path, ct_filename)) as da:
-        pps_data["cmic_phase"] = da.cmic_phase.values[1, :, :]
-        pps_data["cmic_lwp"] = da.cmic_lwp.values[1, :, :]
-        pps_data["cmic_quality"] = da.cmic_quality.values[1, :, :]  
-    return pps_data      
-  
+        pps_data["ct"] = da.ct.values[0, :, :]
+        pps_data["ct_quality"] = da.ct_quality.values[0, :, :]
+    with xr.open_dataset(os.path.join(output_path, cmic_filename)) as da:
+        pps_data["cmic_phase"] = da.cmic_phase.values[0, :, :]
+        pps_data["cmic_lwp"] = da.cmic_lwp.values[0, :, :]
+        pps_data["cmic_quality"] = da.cmic_quality.values[0, :, :]
+    return pps_data
+
+
 def extract_pps_parameter(pps_data, parameter) -> np.ndarray:
-    try: 
+    try:
         return pps_data[parameter]
     except:
         raise Exception(f"{parameter} not present")
-    
-      
+
+
 def get_pps_data_files(input_path: str) -> Tuple[str, str, str, str]:
     """Extract PPS file names from the input path of L1C files"""
-    input_filename = input_path.split('/')[-1]
-    output_path = input_path.replace('L1C', 'PPS')
-    ctth_filename = re.sub(r'S_NWC_viirs_npp', 'S_NWC_CTTH_npp', input_filename)
-    ct_filename = re.sub(r'S_NWC_viirs_npp', 'S_NWC_CT_npp', input_filename)
-    cmic_filename = re.sub(r'S_NWC_viirs_npp', 'S_NWC_CMIC_npp', input_filename)
+    input_filename = input_path.split("/")[-1]
+    output_path = os.path.dirname(input_path).replace("L1C", "PPS")
+    ctth_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CTTH_npp", input_filename)
+    ct_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CT_npp", input_filename)
+    cmic_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CMIC_npp", input_filename)
     return output_path, ctth_filename, ct_filename, cmic_filename
