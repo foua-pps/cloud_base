@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 from sys import argv
 import argparse
 from cbase.matching.match_csat_vgac_nwp_filenames import (
@@ -14,8 +15,12 @@ def process(
 ):
     """main process"""
     # read in data
-
-    vgc = viirs.VGACData.from_file(vgac_file)
+    if os.path.basename(vgac_file.as_posix())[:4] == "VGAC" :
+        vgc = viirs.VGACData.from_file(vgac_file)
+    elif os.path.basename(vgac_file.as_posix())[:4] == "S_NW" :
+        vgc = viirs.VGACData_PPS.from_file(vgac_file)
+    else:
+        raise ValueError(f"this file not supported {vgac_file}")
     nwp = era5.Era5.from_file(nwp_file)
     cld = cloudsat.CloudsatData.from_files(cldclass_lidar_file, dardar_file)
 
@@ -98,7 +103,7 @@ def cli(args_list: list[str]) -> None:
     )
     args = parser.parse_args(args_list)
 
-    # Check mutual exclusivity
+
     options = [
         args.available_cloudsat_files,
         args.available_dardar_files,
