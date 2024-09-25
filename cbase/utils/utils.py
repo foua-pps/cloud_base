@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import pytz
 import numpy as np
 import xarray as xr
@@ -16,6 +16,14 @@ def datetime64_to_datetime(times: np.datetime64) -> datetime:
         ]
     )
 
+def microseconds_to_datetime(microseconds) -> datetime:
+    """
+    Convert microseconds since 1970-01-01 (Unix epoch) to a UTC datetime object.
+    """
+    seconds = microseconds / 10e6
+    return np.array(
+        [datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=sec) for sec in seconds]
+    )
 
 def haversine_distance(
     lat1: float, lon1: float, lat2: np.array, lon2: np.array
