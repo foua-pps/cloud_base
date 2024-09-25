@@ -1,15 +1,18 @@
 I1, I2 = 0, 800  # index to select the part of scan where collocations can lie
-COLLOCATION_THRESHOLD = 4  # km
+COLLOCATION_THRESHOLD = 2  # km
 TIME_WINDOW = [-200, 200]
-IMAGE_SIZE = 32
+XIMAGE_SIZE = 20
+YIMAGE_SIZE = 100
 PADDING = 1.0  # some extra margin when interpolating ERA5 (in degrees)
 TIME_DIFF_ALLOWED = 30  # minutes
 SECS_PER_MINUTE = 60
 MINUTES_PER_HOUR = 60
+PIXEL_DATA = False
+CNN_DATA = True
 CLOUDSAT_PATH = "/home/a002602/data/cloud_base/cloudsat/"
 VGAC_PATH = "/home/a002602/data/cloud_base/vgac/"
 NWP_PATH = "/home/a002602/data/cloud_base/NWP/"
-OUTPUT_PATH = "/nobackup/smhid20/users/sm_indka/collocated_data/"
+OUTPUT_PATH = "/nobackup/smhid20/users/sm_indka/collocated_data/VGAC_PPS/"
 
 CNN_NWP_PARAMETERS = [
     "h_2meter",
@@ -17,7 +20,7 @@ CNN_NWP_PARAMETERS = [
     "p_surface",
     "z_surface",
     "ciwv",
-    #"tclw",
+    "tclw",
     # "pressure_levels",
     "t100",
     "t250",
@@ -28,40 +31,41 @@ CNN_NWP_PARAMETERS = [
     "t900",
     "t950",
     "t1000",
-    "q100",
-    "q250",
-    "q400",
-    "q500",
-    "q700",
-    "q850",
-    "q900",
-    "q950",
-    "q1000",
+    "rh100",
+    "rh250",
+    "rh400",
+    "rh500",
+    "rh700",
+    "rh850",
+    "rh900",
+    "rh950",
+    "rh1000",
     "snow_mask",
     "t_sea",
     "t_land",
-    "ice_mask",
+    #"ice_mask",
 ]
 CNN_VGAC_PARAMETERS = [
     "latitude",
     "longitude",
-    "M01",
-    "M02",
-    "M03",
-    "M04",
     "M05",
-    "M06",
     "M07",
-    "M08",
-    "M09",
-    "M10",
-    "M11",
     "M12",
-    "M13",
-    "M14",
     "M15",
     "M16",
+    "ctt",
+    "cth",
+    "ctp",
+    "ctp_quality",
+    "ct",
+    "ct_quality",
+    "cmic_phase",
+    "cmic_quality",
+    "cmic_lwp",
+    "elevation",
+    "land_use"
 ]
+
 CNN_MATCHED_PARAMETERS = [
     "cloud_top",
     "cloud_base",

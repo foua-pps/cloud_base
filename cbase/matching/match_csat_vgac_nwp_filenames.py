@@ -1,4 +1,5 @@
 import re
+import os
 from sys import argv
 import argparse
 from datetime import datetime, timedelta
@@ -45,7 +46,7 @@ def get_cloudsat_time(
 def get_vgac_time(vgac_file: str) -> datetime:
     """get VGAC orbit time"""
     try:
-        if vgac_file[:4] == "VGAC":
+        if os.path.basename(vgac_file)[:4] == "VGAC":
             pattern = r"(\d{7})_(\d{4})"
             match = re.search(pattern, vgac_file)
             year = match.group(1)[:4]
@@ -56,21 +57,23 @@ def get_vgac_time(vgac_file: str) -> datetime:
                 int(year), int(doy), int(hour), int(minutes)
             )
             return vtime
-        elif vgac_file[:4] == "S_NWC":
-            pattern = r"(\d{17})_(\d{17})"
+        elif os.path.basename(vgac_file)[:4] == "S_NW":
+            pattern = r'(\d{8}T\d{7}Z)_(\d{8}T\d{7}Z)'
             match = re.search(pattern, vgac_file)
-            year = match.group(1)[:4]
-            month = match.group(1)[4:6]
-            day = match.group(1)[6:8]
-            hour = match.group(1)[9:11]
-            minutes = match.group(1)[11:13]
-            seconds = match.group(1)[13:15]
-            vtime = datetime(year, month, day, hour, minutes, seconds)
+            year = int(match.group(1)[:4])
+            month = int(match.group(1)[4:6])
+            day = int(match.group(1)[6:8])
+            hour = int(match.group(1)[9:11])
+            minutes = int(match.group(1)[11:13])
+            vtime = datetime(year, month, day, hour, minutes)
+            print(match.group(1), vtime)
             return vtime
         else:
+            print(vgac_file[:4])
             raise ValueError(f"This VIIRs files is not supported, {vgac_file}")
 
     except Exception as exc:
+        print(exc)
         raise ValueError(
             f"the pattern is of type *2018150_0136*, check file name: {vgac_file}"
         ) from exc
@@ -80,6 +83,7 @@ def is_valid_match(ctime: datetime, vtime: datetime) -> bool:
     """check if time diff between two sat passes is optimal"""
 
     tdiff = (ctime - vtime).total_seconds() / SECS_PER_MINUTE
+    print(tdiff, ctime, vtime)
     return np.abs(tdiff) < 0.5 * MINUTES_PER_HOUR  # 30 minutes tolerance
 
 
@@ -87,9 +91,11 @@ def _find_matching_files(ctime, files: list, key: str) -> list:
     """Find matching DARDAR/VGAC/NWP files"""
 
     def _matching_string(time: datetime, key: str):
-        if key in ["vgac", "nwp", "dardar"]:
+        if key in ["vgac", "vgac_pps", "nwp", "dardar"]:
             if key == "vgac":
                 return time.strftime("%Y%j_%H")
+            if key == "vgac_pps":
+                return time.strftime("00000_%Y%m%dT%H")
             if key == "nwp":
                 return time.strftime("%Y%m%d%H")
             if key == "dardar":
@@ -101,7 +107,7 @@ def _find_matching_files(ctime, files: list, key: str) -> list:
     matched_files = []
     matched_files += [file for file in files if _matching_string(ctime, key) in file]
 
-    if key in ["vgac", "nwp"]:
+    if key in ["vgac", "nwp", "vgac_pps"]:
         # also add in files from prev hour
         prev_hour = ctime - timedelta(hours=1)
         matched_files += [
@@ -122,9 +128,12 @@ def get_matching_cloudsat_vgac_nwp_files(
         print(cfile)
         ctime = get_cloudsat_time(cfile)
         d_matches = _find_matching_files(ctime, dfiles, "dardar")
-        v_matches = _find_matching_files(ctime, vfiles, "vgac")
+        if os.path.basename(vfiles[0])[:4] == "VGAC":
+            v_matches = _find_matching_files(ctime, vfiles, "vgac")
+        if os.path.basename(vfiles[0])[:4] == "S_NW":
+            v_matches = _find_matching_files(ctime, vfiles, "vgac_pps")
         n_matches = _find_matching_files(ctime, nfiles, "nwp")
-
+        print(n_matches)
         if v_matches and n_matches and d_matches:
             for vfile, nfile in zip(v_matches, n_matches):
                 # check for closest VGAC file
