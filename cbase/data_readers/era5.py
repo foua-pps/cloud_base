@@ -4,6 +4,7 @@ from enum import Enum
 import numpy as np
 from scipy.interpolate import interp1d
 from pps_nwp.gribfile import GRIBFile
+from pps_nwp.water.humidity import sph2rh
 
 
 class PressureLevels(Enum):
@@ -18,15 +19,15 @@ class PressureLevels(Enum):
     T900 = 900
     T950 = 950
     T1000 = 1000
-    Q100 = 100
-    Q250 = 250  # hPa
-    Q400 = 400
-    Q500 = 500
-    Q700 = 700
-    Q850 = 850
-    Q900 = 900
-    Q950 = 950
-    Q1000 = 1000
+    RH100 = 100
+    RH250 = 250  # hPa
+    RH400 = 400
+    RH500 = 500
+    RH700 = 700
+    RH850 = 850
+    RH900 = 900
+    RH950 = 950
+    RH1000 = 1000
 
 
 @dataclass
@@ -82,17 +83,19 @@ class Era5:
         ]:
             values = self.grb.get_t_pressure(PressureLevels[parameter.upper()].value)[:]
         elif parameter in [
-            "q100",
-            "q250",
-            "q400",
-            "q500",
-            "q700",
-            "q850",
-            "q900",
-            "q950",
-            "q1000",
+            "rh100",
+            "rh250",
+            "rh400",
+            "rh500",
+            "rh700",
+            "rh850",
+            "rh900",
+            "rh950",
+            "rh1000",
         ]:
-            values = self.grb.get_q_pressure(PressureLevels[parameter.upper()].value)[:]
+            q = self.grb.get_q_pressure(PressureLevels[parameter.upper()].value)[:]
+            t = self.grb.get_t_pressure(PressureLevels[parameter.upper()].value)[:]
+            values = sph2rh(q, t, PressureLevels[parameter.upper()].value)
         elif parameter == "snow_mask":
             values = self.grb.get_snow_depth()[:]
         elif parameter == "t_land":

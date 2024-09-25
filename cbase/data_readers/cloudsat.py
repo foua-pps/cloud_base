@@ -52,7 +52,7 @@ class CloudsatData:
             vis_optical_depth = get_vod_from_dardar(dardar_cloud_file.as_posix())
 
             return cls(
-                csat_dict["Longitude"].ravel(),
+                csat_dict["Longitude"].ravel()%360,
                 csat_dict["Latitude"].ravel(),
                 get_top_height(csat_dict["LayerTop"]),
                 csat_dict["LayerBase"][:, 0],  # base height of bottommost layer
@@ -72,7 +72,6 @@ class CloudsatData:
 
 def get_top_height(cth: np.array) -> np.array:
     """get height of highest cloud out of n layers"""
-    print(cth.min(), cth.max())
     cth_copy = cth.copy()
     top_height = np.ones(len(cth)) * -9
     all_missing = np.all(cth < 0, axis=1)
