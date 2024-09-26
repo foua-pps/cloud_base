@@ -67,7 +67,7 @@ class DataMatcher:
         t2 = self.cloudsat.time[-1]  # end time
         if t1 > t2:
             raise ValueError("start time cannot be after end time")
-        for dt in self.vgac.time:
+        for dt in self.vgac.time[:, 0]:
             if t1 <= dt <= t2:
                 return True
         return False
@@ -114,7 +114,7 @@ class DataMatcher:
         # print(x_argmin, y_argmin)
         # check tdiff between cloudsat and VGAC collocations
         tdiff = np.abs(
-            self.cloudsat.time[icld[0] : icld[1]][x_argmin] - self.vgac.time[i]
+            self.cloudsat.time[icld[0] : icld[1]][x_argmin] - self.vgac.time[i, 0]
         )
         tdiff_minutes = np.array([t.seconds / SECS_PER_MINUTE for t in tdiff])
         # find indices where values are greater than zero
@@ -152,10 +152,10 @@ class DataMatcher:
         """get part of cloudsat track within the time window"""
         return (
             self.cloudsat.time
-            >= self.vgac.time[itime] + timedelta(minutes=TIME_WINDOW[0])
+            >= self.vgac.time[itime, 0] + timedelta(minutes=TIME_WINDOW[0])
         ) & (
             self.cloudsat.time
-            <= self.vgac.time[itime] + timedelta(minutes=TIME_WINDOW[1])
+            <= self.vgac.time[itime, 0] + timedelta(minutes=TIME_WINDOW[1])
         )
 
     def get_index_closest_cloudsat_track(
@@ -317,9 +317,12 @@ class DataMatcher:
 
         for _, (parameters, data_list) in parameter_types.items():
             for parameter in parameters:
-                print(parameter, np.stack(data_list[parameter]).shape)
+                if parameter == "time": # time cannot be stred as datetime in netcdf file
+                    values = np.vectorize(lambda dt: dt.timestamp())(np.stack(data_list[parameter]))
+                else:
+                    values = np.stack(data_list[parameter])
                 ds[parameter] = xr.DataArray(
-                    np.stack(data_list[parameter]),
+                    values,
                     dims=("nscene", "npix", "nscan"),
                     coords={"npix": npix, "nscan": nscan, "nscene": nscene},
                 )

@@ -121,13 +121,13 @@ class VGACData_PPS:
         """read data from netCDF file"""
         with xr.open_dataset(filepath) as da:
             validation_height_base = -999.9 * np.ones_like(da.lat.values)
-            time = datetime64_to_datetime(da.scanline_timestamps.values)
-            time_all_pixels = np.tile(time, (da.lat.shape[1], 1)).T
+            time_scanline = datetime64_to_datetime(da.scanline_timestamps.values)
+            time = np.tile(time_scanline, (da.lat.shape[1], 1)).T
         pps_data = get_pps_data(filepath)
         vgac = VGACData_PPS(
             da.lon.values,
             da.lat.values,
-            time_all_pixels,
+            time,
             validation_height_base,
             da.image1.values[0, :, :],
             da.image2.values[0, :, :],

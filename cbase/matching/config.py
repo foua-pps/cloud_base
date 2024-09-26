@@ -1,5 +1,5 @@
 I1, I2 = 0, 800  # index to select the part of scan where collocations can lie
-COLLOCATION_THRESHOLD = 2  # km
+COLLOCATION_THRESHOLD = 4  # km
 TIME_WINDOW = [-200, 200]
 XIMAGE_SIZE = 20
 YIMAGE_SIZE = 100
@@ -46,6 +46,7 @@ CNN_NWP_PARAMETERS = [
     #"ice_mask",
 ]
 CNN_VGAC_PARAMETERS = [
+    "time",
     "latitude",
     "longitude",
     "M05",
