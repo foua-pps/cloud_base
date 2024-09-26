@@ -84,8 +84,7 @@ def is_valid_match(ctime: datetime, vtime: datetime) -> bool:
 
     tdiff = (ctime - vtime).total_seconds() / SECS_PER_MINUTE
     print(tdiff, ctime, vtime)
-    return np.abs(tdiff) < 0.5 * MINUTES_PER_HOUR  # 30 minutes tolerance
-
+    return np.abs(tdiff) 
 
 def _find_matching_files(ctime, files: list, key: str) -> list:
     """Find matching DARDAR/VGAC/NWP files"""
@@ -113,6 +112,11 @@ def _find_matching_files(ctime, files: list, key: str) -> list:
         matched_files += [
             file for file in files if _matching_string(prev_hour, key) in file
         ]
+        # also add next hour
+        next_hour = ctime + timedelta(hours=1)
+        matched_files += [
+            file for file in files if _matching_string(next_hour, key) in file
+        ]
     return matched_files
 
 
@@ -134,14 +138,18 @@ def get_matching_cloudsat_vgac_nwp_files(
             v_matches = _find_matching_files(ctime, vfiles, "vgac_pps")
         n_matches = _find_matching_files(ctime, nfiles, "nwp")
         print(n_matches)
+        print(v_matches)
+        print(d_matches)
         if v_matches and n_matches and d_matches:
+            tdiff = []
             for vfile, nfile in zip(v_matches, n_matches):
                 # check for closest VGAC file
                 vtime = get_vgac_time(vfile)
-                if is_valid_match(ctime, vtime):
-                    matched_vfiles.append(vfile)
-                    matched_cfiles.append(cfile)
-                    matched_dfiles.append(d_matches[0])
-                    matched_nfiles.append(nfile)
-                break
+                tdiff.append(is_valid_match(ctime, vtime))
+            ix = np.argmin(np.array(tdiff)) # min time diff from all matches found
+            matched_vfiles.append(v_matches[ix])
+            matched_nfiles.append(n_matches[ix])
+            matched_cfiles.append(cfile)
+            matched_dfiles.append(d_matches[0])
+
     return matched_cfiles, matched_dfiles, matched_vfiles, matched_nfiles
