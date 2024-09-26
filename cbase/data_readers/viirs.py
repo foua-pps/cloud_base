@@ -6,7 +6,7 @@ import numpy as np
 from satpy import Scene
 import xarray as xr
 import re
-from cbase.utils.utils import datetime64_to_datetime, microseconds_to_datetime
+from cbase.utils.utils import datetime64_to_datetime
 
 
 VGAC_PARAMETER_LIST = [
@@ -122,11 +122,12 @@ class VGACData_PPS:
         with xr.open_dataset(filepath) as da:
             validation_height_base = -999.9 * np.ones_like(da.lat.values)
             time = datetime64_to_datetime(da.scanline_timestamps.values)
+            time_all_pixels = np.tile(time, (da.lat.shape[1], 1)).T
         pps_data = get_pps_data(filepath)
         vgac = VGACData_PPS(
             da.lon.values,
             da.lat.values,
-            time,
+            time_all_pixels,
             validation_height_base,
             da.image1.values[0, :, :],
             da.image2.values[0, :, :],
