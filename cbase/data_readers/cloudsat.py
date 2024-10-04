@@ -52,7 +52,7 @@ class CloudsatData:
             vis_optical_depth = get_vod_from_dardar(dardar_cloud_file.as_posix())
 
             return cls(
-                csat_dict["Longitude"].ravel()%360,
+                csat_dict["Longitude"].ravel() % 360,
                 csat_dict["Latitude"].ravel(),
                 get_top_height(csat_dict["LayerTop"]),
                 csat_dict["LayerBase"][:, 0],  # base height of bottommost layer

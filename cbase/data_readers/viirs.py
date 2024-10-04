@@ -111,7 +111,7 @@ class VGACData_PPS:
     ct: np.ndarray
     ct_quality: np.ndarray
     cmic_phase: np.ndarray
-    cmic_lwp: np.ndarray  
+    cmic_lwp: np.ndarray
     cmic_quality: np.ndarray
     elevation: np.ndarray
     land_use: np.ndarray
@@ -125,7 +125,7 @@ class VGACData_PPS:
             time = np.tile(time_scanline, (da.lat.shape[1], 1)).T
         pps_data = get_pps_data(filepath)
         vgac = VGACData_PPS(
-            da.lon.values,
+            da.lon.values % 360,
             da.lat.values,
             time,
             validation_height_base,
@@ -144,15 +144,14 @@ class VGACData_PPS:
             extract_pps_parameter(pps_data, "cmic_lwp"),
             extract_pps_parameter(pps_data, "cmic_quality"),
             extract_pps_parameter(pps_data, "elevation"),
-            extract_pps_parameter(pps_data, "land_use")
+            extract_pps_parameter(pps_data, "land_use"),
         )
         return vgac
 
 
 def get_pps_data(input_path: Path) -> dict:
-
-    output_path, aux_path, ctth_filename, ct_filename, cmic_filename, aux_filename = get_pps_data_files(
-        input_path.as_posix()
+    output_path, aux_path, ctth_filename, ct_filename, cmic_filename, aux_filename = (
+        get_pps_data_files(input_path.as_posix())
     )
     pps_data = {}
     with xr.open_dataset(os.path.join(output_path, ctth_filename)) as da:
@@ -167,9 +166,9 @@ def get_pps_data(input_path: Path) -> dict:
         pps_data["cmic_phase"] = da.cmic_phase.values[0, :, :]
         pps_data["cmic_lwp"] = da.cmic_lwp.values[0, :, :]
         pps_data["cmic_quality"] = da.cmic_quality.values[0, :, :]
-    with xr.open_dataset(os.path.join(aux_path, aux_filename)) as da:  
+    with xr.open_dataset(os.path.join(aux_path, aux_filename)) as da:
         pps_data["elevation"] = da.elevation.values[0, :, :]
-        pps_data["land_use"] = da.landuse[0, :, :] 
+        pps_data["land_use"] = da.landuse[0, :, :]
     return pps_data
 
 
@@ -189,6 +188,15 @@ def get_pps_data_files(input_path: str) -> Tuple[str, str, str, str]:
     ctth_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CTTH_npp", input_filename)
     ct_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CT_npp", input_filename)
     cmic_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CMIC_npp", input_filename)
-    aux_path = output_path.replace("NO_SBAF/export", "NO_SBAF/intermediate/AUX_remapped/")
+    aux_path = output_path.replace(
+        "NO_SBAF/export", "NO_SBAF/intermediate/AUX_remapped/"
+    )
     aux_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_physiography_npp", input_filename)
-    return output_path, aux_path, ctth_filename, ct_filename, cmic_filename, aux_filename 
+    return (
+        output_path,
+        aux_path,
+        ctth_filename,
+        ct_filename,
+        cmic_filename,
+        aux_filename,
+    )
