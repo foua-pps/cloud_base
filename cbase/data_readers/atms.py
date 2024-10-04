@@ -4,18 +4,18 @@ import xarray as xr
 from datetime import datetime
 
 
-atms_data = {
-    "latitude": [],
-    "longitude": [],
-    "time": [],
-    "tb17": [],
-    "tb18": [],
-    "tb19": [],
-    "tb20": [],
-    "tb21": [],
-    "tb22": [],
-    "view_ang": [],
-}
+ATMS_KEYS = [
+    "latitude",
+    "longitude",
+    "time",
+    "tb17",
+    "tb18",
+    "tb19",
+    "tb20",
+    "tb21",
+    "tb22",
+    "view_ang",
+]
 
 
 @dataclass
@@ -41,6 +41,7 @@ class ATMSData:
     @classmethod
     def from_file(cls, atmsfiles: list):
         """read data from netCDF file"""
+        atms_data = {key: [] for key in ATMS_KEYS}
         for atmsfile in sorted(atmsfiles):
             with xr.open_dataset(atmsfile) as da:
                 atms_data["latitude"].append(da.lat.values)
@@ -69,7 +70,7 @@ class ATMSData:
         )
 
 
-def convert_to_datetime(utc_array) -> np.ndarray:
+def convert_to_datetime(utc_array) -> np.ndarray[datetime]:
     """convert ATMS timestamps to datetime
     ATMS time stamps come as tuples of 8 values
     pertaining to names of the elements of UTC when
