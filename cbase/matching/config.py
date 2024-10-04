@@ -1,6 +1,6 @@
 I1, I2 = 0, 800  # index to select the part of scan where collocations can lie
 COLLOCATION_THRESHOLD = 4  # km
-TIME_WINDOW = [-200, 200]
+TIME_WINDOW = [-200, 200]  # just to find cloudsat swath closest to VGAC
 XIMAGE_SIZE = 20
 YIMAGE_SIZE = 100
 PADDING = 1.0  # some extra margin when interpolating ERA5 (in degrees)
@@ -12,6 +12,7 @@ CNN_DATA = True
 CLOUDSAT_PATH = "/home/a002602/data/cloud_base/cloudsat/"
 VGAC_PATH = "/home/a002602/data/cloud_base/vgac/"
 NWP_PATH = "/home/a002602/data/cloud_base/NWP/"
+ATMS_PATH = "/nobackup/smhid17/proj/foua/data/satellit/ATMS/"
 OUTPUT_PATH = "/nobackup/smhid20/users/sm_indka/collocated_data/VGAC_PPS/"
 
 CNN_NWP_PARAMETERS = [
@@ -43,7 +44,7 @@ CNN_NWP_PARAMETERS = [
     "snow_mask",
     "t_sea",
     "t_land",
-    #"ice_mask",
+    # "ice_mask",
 ]
 CNN_VGAC_PARAMETERS = [
     "time",
@@ -64,7 +65,7 @@ CNN_VGAC_PARAMETERS = [
     "cmic_quality",
     "cmic_lwp",
     "elevation",
-    "land_use"
+    "land_use",
 ]
 
 CNN_MATCHED_PARAMETERS = [
@@ -75,3 +76,5 @@ CNN_MATCHED_PARAMETERS = [
     "flag_base",
     "cloud_fraction",
 ]
+
+ATMS_PARAMETERS = ["tb17", "tb18", "tb19", "tb20", "tb21", "tb22"]
