@@ -21,7 +21,7 @@ from .config import (
     SECS_PER_MINUTE,
     OUTPUT_PATH,
     PIXEL_DATA,
-    CNN_DATA
+    CNN_DATA,
 )
 
 
@@ -107,7 +107,8 @@ class DataMatcher:
 
         lon_c, lat_c, lon_v, lat_v = self.broadcast_arrays(i, icld)
 
-        # calculate haversine distance & find args where distance is below threshold
+        # calculate haversine distance & find args where distance is below
+        #  threshold
         distances = haversine_distance(lat_v, lon_v, lat_c, lon_c)
         args = np.argwhere(distances <= COLLOCATION_THRESHOLD)
         x_argmin, y_argmin = args[:, 0], args[:, 1]
@@ -195,12 +196,11 @@ class DataMatcher:
             if self.get_index_closest_cloudsat_track(itime) is None:
                 continue
             icld1, icld2 = self.get_index_closest_cloudsat_track(itime)
-            
+
             if np.all(self.cloudsat.cloud_base[icld1:icld2] < 0):
                 continue
             # get the matching data for the selected part of swath
             self.process_matching_iteration_nearest(itime, [icld1, icld2])
-
 
     def _bounding_box(self, i: int, j: int):
         """bounding box for CNN input image"""
@@ -208,16 +208,13 @@ class DataMatcher:
         return BoundingBox(
             max(0, i - int(YIMAGE_SIZE / 2)),
             min(n, i + int(YIMAGE_SIZE / 2)),
-            max(0, j - int(XIMAGE_SIZE / 2 )),
+            max(0, j - int(XIMAGE_SIZE / 2)),
             min(n, j + int(XIMAGE_SIZE / 2)),
         )
-
-
 
     def _interpolate_nwp_data(
         self, parameter: str, projection: tuple[np.ndarray, np.ndarray]
     ) -> np.ndarray:
-
         try:
             return self.era5.get_data(parameter, projection)
         except Exception as e:
@@ -226,30 +223,25 @@ class DataMatcher:
     def _make_cnn_data_matched_parameters(
         self, lists_collocated_data: dict, box: BoundingBox
     ):
-
         for parameter, values in lists_collocated_data.items():
             data = self.collocated_data[parameter]
             values.append(data[box.i1 : box.i2, box.j1 : box.j2])
 
-  
     def _make_cnn_data_vgac_parameters(self, lists_vgac_data: dict, box: BoundingBox):
-
         for parameter, values in lists_vgac_data.items():
-
             data = getattr(self.vgac, parameter)
-            values.append(data[box.i1 : box.i2, box.j1 : box.j2])        
+            values.append(data[box.i1 : box.i2, box.j1 : box.j2])
 
-    def _make_cnn_data_vgac_parameters_pixel(self, lists_vgac_data: dict, box: BoundingBox):
-
+    def _make_cnn_data_vgac_parameters_pixel(
+        self, lists_vgac_data: dict, box: BoundingBox
+    ):
         for parameter, values in lists_vgac_data.items():
-
             data = getattr(self.vgac, parameter)
-            values.append(data[box.i1 : box.i2, box.j1 : box.j2])            
+            values.append(data[box.i1 : box.i2, box.j1 : box.j2])
 
     def _make_cnn_data_nwp_parameters(
         self, lists_vgac_data: dict, lists_nwp_data: dict, inum: int
     ):
-
         for parameter, values in lists_nwp_data.items():
             print(parameter)
             remap_lats = lists_vgac_data["latitude"][inum]
@@ -279,22 +271,28 @@ class DataMatcher:
                 iscan = iscan[0]
                 if PIXEL_DATA == True:
                     self._make_cnn_data_vgac_parameters(lists_vgac_data, ipix, iscan)
-                    self._make_cnn_data_matched_parameters(lists_collocated_data, ipix, iscan)
+                    self._make_cnn_data_matched_parameters(
+                        lists_collocated_data, ipix, iscan
+                    )
                     self._make_cnn_data_nwp_parameters(
                         lists_vgac_data, lists_nwp_data, inum
                     )
 
-                if CNN_DATA == True:        
+                if CNN_DATA == True:
                     box = self._bounding_box(ipix, iscan)
                     if (box.i2 - box.i1, box.j2 - box.j1) == (YIMAGE_SIZE, XIMAGE_SIZE):
                         self._make_cnn_data_vgac_parameters(lists_vgac_data, box)
-                        self._make_cnn_data_matched_parameters(lists_collocated_data, box)
+                        self._make_cnn_data_matched_parameters(
+                            lists_collocated_data, box
+                        )
                         self._make_cnn_data_nwp_parameters(
                             lists_vgac_data, lists_nwp_data, inum
                         )
                         inum += 1
-        if len(lists_vgac_data) > 0:           
-            ds = self._make_dataset(lists_vgac_data, lists_collocated_data, lists_nwp_data)
+        if len(lists_vgac_data) > 0:
+            ds = self._make_dataset(
+                lists_vgac_data, lists_collocated_data, lists_nwp_data
+            )
             if to_file is True:
                 ds.to_netcdf(self.out_filename)
         else:
@@ -317,8 +315,12 @@ class DataMatcher:
 
         for _, (parameters, data_list) in parameter_types.items():
             for parameter in parameters:
-                if parameter == "time": # time cannot be stred as datetime in netcdf file
-                    values = np.vectorize(lambda dt: dt.timestamp())(np.stack(data_list[parameter]))
+                if (
+                    parameter == "time"
+                ):  # time cannot be stred as datetime in netcdf file
+                    values = np.vectorize(lambda dt: dt.timestamp())(
+                        np.stack(data_list[parameter])
+                    )
                 else:
                     values = np.stack(data_list[parameter])
                 ds[parameter] = xr.DataArray(
