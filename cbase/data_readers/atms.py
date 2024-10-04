@@ -51,7 +51,7 @@ class ATMSData:
                 atms_data["tb20"].append(da.antenna_temp.values[:, :, 19])
                 atms_data["tb21"].append(da.antenna_temp.values[:, :, 20])
                 atms_data["tb22"].append(da.antenna_temp.values[:, :, 21])
-                atms_data["view_ang"].append(da.view_and.values)
+                atms_data["view_ang"].append(da.view_ang.values)
                 atms_time = convert_to_datetime(da.obs_time_utc.values)
                 atms_data["time"].append(atms_time)
 
