@@ -1,13 +1,8 @@
-import os
-from pathlib import Path
-from typing import Tuple
 from dataclasses import dataclass
 import numpy as np
-from satpy import Scene
 import xarray as xr
-import re
 from datetime import datetime
-from cbase.utils.utils import datetime64_to_datetime, microseconds_to_datetime
+
 
 atms_data = {
     "latitude": [],
@@ -19,6 +14,7 @@ atms_data = {
     "tb20": [],
     "tb21": [],
     "tb22": [],
+    "view_ang": [],
 }
 
 
@@ -40,6 +36,7 @@ class ATMSData:
     tb20: np.ndarray
     tb21: np.ndarray
     tb22: np.ndarray
+    view_ang: np.ndarray
 
     @classmethod
     def from_file(cls, atmsfiles: list):
@@ -54,6 +51,7 @@ class ATMSData:
                 atms_data["tb20"].append(da.antenna_temp.values[:, :, 19])
                 atms_data["tb21"].append(da.antenna_temp.values[:, :, 20])
                 atms_data["tb22"].append(da.antenna_temp.values[:, :, 21])
+                atms_data["view_ang"].append(da.view_and.values)
                 atms_time = convert_to_datetime(da.obs_time_utc.values)
                 atms_data["time"].append(atms_time)
 
@@ -67,6 +65,7 @@ class ATMSData:
             np.concatenate(atms_data["tb20"]),
             np.concatenate(atms_data["tb21"]),
             np.concatenate(atms_data["tb22"]),
+            np.concatenate(atms_data["view_ang"]),
         )
 
 
