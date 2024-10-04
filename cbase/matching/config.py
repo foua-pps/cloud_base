@@ -77,4 +77,4 @@ CNN_MATCHED_PARAMETERS = [
     "cloud_fraction",
 ]
 
-ATMS_PARAMETERS = ["tb17", "tb18", "tb19", "tb20", "tb21", "tb22"]
+ATMS_PARAMETERS = ["tb17", "tb18", "tb19", "tb20", "tb21", "tb22", "view_ang"]
