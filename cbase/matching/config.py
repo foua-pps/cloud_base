@@ -12,7 +12,6 @@ CNN_DATA = True
 CLOUDSAT_PATH = "/home/a002602/data/cloud_base/cloudsat/"
 VGAC_PATH = "/home/a002602/data/cloud_base/vgac/"
 NWP_PATH = "/home/a002602/data/cloud_base/NWP/"
-ATMS_PATH = "/nobackup/smhid17/proj/foua/data/satellit/ATMS/"
 OUTPUT_PATH = "/nobackup/smhid20/users/sm_indka/collocated_data/VGAC_PPS/"
 
 CNN_NWP_PARAMETERS = [
