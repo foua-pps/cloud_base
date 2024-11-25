@@ -1,12 +1,9 @@
 import re
 import os
-from sys import argv
-import argparse
 from datetime import datetime, timedelta
 import numpy as np
 from cbase.matching.config import (
     SECS_PER_MINUTE,
-    MINUTES_PER_HOUR,
 )
 
 
@@ -39,7 +36,8 @@ def get_cloudsat_time(
         return ctime
     except Exception as exc:
         raise ValueError(
-            f"the pattern is of type *2018150001814_64370*, check file name: {cloudsat_file}"
+            "the pattern is of type *2018150001814_64370*,"
+            f"check file name: {cloudsat_file}"
         ) from exc
 
 
@@ -58,7 +56,7 @@ def get_vgac_time(vgac_file: str) -> datetime:
             )
             return vtime
         elif os.path.basename(vgac_file)[:4] == "S_NW":
-            pattern = r'(\d{8}T\d{7}Z)_(\d{8}T\d{7}Z)'
+            pattern = r"(\d{8}T\d{7}Z)_(\d{8}T\d{7}Z)"
             match = re.search(pattern, vgac_file)
             year = int(match.group(1)[:4])
             month = int(match.group(1)[4:6])
@@ -84,7 +82,8 @@ def is_valid_match(ctime: datetime, vtime: datetime) -> bool:
 
     tdiff = (ctime - vtime).total_seconds() / SECS_PER_MINUTE
     print(tdiff, ctime, vtime)
-    return np.abs(tdiff) 
+    return np.abs(tdiff)
+
 
 def _find_matching_files(ctime, files: list, key: str) -> list:
     """Find matching DARDAR/VGAC/NWP files"""
@@ -104,7 +103,9 @@ def _find_matching_files(ctime, files: list, key: str) -> list:
         )
 
     matched_files = []
-    matched_files += [file for file in files if _matching_string(ctime, key) in file]
+    matched_files += [
+        file for file in files if _matching_string(ctime, key) in file
+    ]
 
     if key in ["vgac", "nwp", "vgac_pps"]:
         # also add in files from prev hour
@@ -146,7 +147,9 @@ def get_matching_cloudsat_vgac_nwp_files(
                 # check for closest VGAC file
                 vtime = get_vgac_time(vfile)
                 tdiff.append(is_valid_match(ctime, vtime))
-            ix = np.argmin(np.array(tdiff)) # min time diff from all matches found
+            ix = np.argmin(
+                np.array(tdiff)
+            )  # min time diff from all matches found
             matched_vfiles.append(v_matches[ix])
             matched_nfiles.append(n_matches[ix])
             matched_cfiles.append(cfile)
