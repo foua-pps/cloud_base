@@ -70,6 +70,8 @@ CNN_VGAC_PARAMETERS = [
     "M14",
     "M15",
     "M16",
+    "satzenith",
+    "satazimuth",
 ]
 CNN_VGAC_PPS_PARAMETERS = [
     "time",
