@@ -84,7 +84,13 @@ class MatchATMSVGAC:
             latlon_mask = self.get_latlon_mask(latlon_box)
             matcher_mask = self.get_closest_matches(latlon_mask)
 
-            interpolated_atms = self.interpolate_atms2vgac(latlon_mask, matcher_mask)
+            try:
+                interpolated_atms = self.interpolate_atms2vgac(
+                    latlon_mask, matcher_mask
+                )
+            except Exception as e:
+                print(f"Problem with interpolation {e}")
+                interpolated_atms = self.add_fillvalue_atms_data()
 
         self.vgac = add2vgac_dataset(self.vgac, interpolated_atms)
         self.vgac.to_netcdf(self.outfile)
