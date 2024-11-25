@@ -10,15 +10,19 @@ from cbase.matching.match_vgac_cloudsat_nwp import DataMatcher
 
 # python run_process.py -CPATH /home/a002602/data/cloud_base/cloudsat/*20183*CLDCLASS-LIDAR* -DPATH /home/a002602/data/cloud_base/dardar/* -VPATH /home/a002602/data/cloud_base/vgac/* -NPATH /home/a002602/data/cloud_base/NWP/*
 
+
 def process(
-    cldclass_lidar_file: Path, dardar_file: Path, vgac_file: Path, nwp_file: Path
+    cldclass_lidar_file: Path,
+    dardar_file: Path,
+    vgac_file: Path,
+    nwp_file: Path,
 ):
     """main process"""
     # read in data
-    if os.path.basename(vgac_file.as_posix())[:4] == "VGAC" :
+    if os.path.basename(vgac_file.as_posix())[:4] == "VGAC":
         vgc = viirs.VGACData.from_file(vgac_file)
-    elif os.path.basename(vgac_file.as_posix())[:4] == "S_NW" :
-        vgc = viirs.VGACData_PPS.from_file(vgac_file)
+    elif os.path.basename(vgac_file.as_posix())[:4] == "S_NW":
+        vgc = viirs.VGACPPSData.from_file(vgac_file)
     else:
         raise ValueError(f"this file not supported {vgac_file}")
     nwp = era5.Era5.from_file(nwp_file)
@@ -103,7 +107,6 @@ def cli(args_list: list[str]) -> None:
     )
     args = parser.parse_args(args_list)
 
-
     options = [
         args.available_cloudsat_files,
         args.available_dardar_files,
@@ -139,7 +142,8 @@ def cli(args_list: list[str]) -> None:
                 cloudsat_files, dardar_files, vgac_files, nwp_files
             ):
                 print(
-                    f"Processing files: {cloudsat_file}, {dardar_file}, {vgac_file}, {nwp_file}"
+                    "Processing files:"
+                    f"{cloudsat_file}, {dardar_file}, {vgac_file}, {nwp_file}"
                 )
                 process(
                     Path(cloudsat_file),

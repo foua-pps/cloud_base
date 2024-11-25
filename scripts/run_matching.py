@@ -5,17 +5,24 @@ from cbase.matching.match_csat_vgac_nwp_filenames import (
     get_matching_cloudsat_vgac_nwp_files,
 )
 
+# For VGAC files
 # python run_matching.py -CPATH /nobackup/smhid19/proj/foua/data/satellite/cloudsat/2B_GEOPROF-LIDAR_V5/*hdf -VPATH /nobackup/smhid17/proj/foua/data/satellit/VGAC/*/*/*/* -DPATH /nobackup/smhid17/proj/foua/data/satellit/DARDAR/DARDAR-CLOUD_v3.10/*/* -NPATH /nobackup/smhid20/proj/safnwccm/data/nwp/ERA5/2012/*/*
+# For VGAC-PPS FILES
+# python run_matching.py -CPATH /nobackup/smhid19/proj/foua/data/satellite/cloudsat/2B_GEOPROF-LIDAR_V5/*hdf -VPATH /home/foua/data_links/data/satellit/VGAC/L1C/CALIPSO_matchups/SNPP/VIIRS/2012/*/*/*.nc -DPATH /nobackup/smhid17/proj/foua/data/satellit/DARDAR/DARDAR-CLOUD_v3.10/*/* -NPATH /nobackup/smhid20/proj/safnwccm/data/nwp/ERA5/2012/*/*
 
 
-def get_matches(cloudsat_files: list, dardar_files: list, vgac_files: list, nwp_files: list):
+def get_matches(
+    cloudsat_files: list, dardar_files: list, vgac_files: list, nwp_files: list
+):
 
     def _write_to_file(filename: str, items: list):
         with open(filename, "w") as file:
             file.write("\n".join(items))
 
-    matched_csat, matched_dardar, matched_vgac, matched_nwp = get_matching_cloudsat_vgac_nwp_files(
-        cloudsat_files, dardar_files, vgac_files, nwp_files
+    matched_csat, matched_dardar, matched_vgac, matched_nwp = (
+        get_matching_cloudsat_vgac_nwp_files(
+            cloudsat_files, dardar_files, vgac_files, nwp_files
+        )
     )
     if matched_csat:
         _write_to_file("cloudsat_matches.txt", matched_csat[:])
@@ -81,5 +88,5 @@ def cli(args_list: list[str]) -> None:
 
 
 # read in command line args and get process
-cfiles,  dfiles, vfiles, nfiles = cli(argv[1:])
+cfiles, dfiles, vfiles, nfiles = cli(argv[1:])
 get_matches(cfiles, dfiles, vfiles, nfiles)

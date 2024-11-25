@@ -10,6 +10,8 @@ import xarray as xr
 import pyhdf.VS
 import numpy as np
 
+FILL_VALUE = -999.9
+
 
 @dataclass
 class BaseDate:
@@ -49,15 +51,19 @@ class CloudsatData:
         """
         if cldclass_lidar_file and dardar_cloud_file:
             csat_dict = read_cloudsat_hdf4(cldclass_lidar_file.as_posix())
-            vis_optical_depth = get_vod_from_dardar(dardar_cloud_file.as_posix())
+            vis_optical_depth = get_vod_from_dardar(
+                dardar_cloud_file.as_posix()
+            )
 
             return cls(
-                csat_dict["Longitude"].ravel()%360,
+                csat_dict["Longitude"].ravel() % 360,
                 csat_dict["Latitude"].ravel(),
                 get_top_height(csat_dict["LayerTop"]),
-                csat_dict["LayerBase"][:, 0],  # base height of bottommost layer
+                get_base_height(csat_dict["LayerBase"]),
                 csat_dict["CloudLayers"].ravel(),
-                csat_dict["FlagBase"][:, 0],  # which instrument gives base height
+                csat_dict["FlagBase"][
+                    :, 0
+                ],  # which instrument gives base height
                 get_cloud_fraction(csat_dict["CloudFraction"]),
                 # csat_dict["CloudLayerType"][:, 0],
                 vis_optical_depth,
@@ -73,12 +79,24 @@ class CloudsatData:
 def get_top_height(cth: np.array) -> np.array:
     """get height of highest cloud out of n layers"""
     cth_copy = cth.copy()
-    top_height = np.ones(len(cth)) * -9
+    top_height = np.ones(len(cth)) * FILL_VALUE
     all_missing = np.all(cth < 0, axis=1)
     valid_indices = np.argwhere(~all_missing)[:, 0]
     top_height[valid_indices] = np.max(cth_copy[valid_indices, :], axis=1)
 
     return top_height
+
+
+def get_base_height(cbh: np.array) -> np.array:
+    """get height of lowest cloud out of n layers"""
+    cbh_copy = np.float32(cbh.copy())
+    cbh_copy[cbh_copy < 0] = np.nan
+    base_height = np.ones(len(cbh)) * FILL_VALUE
+    all_missing = np.all(cbh < 0, axis=1)
+    valid_indices = np.argwhere(~all_missing)[:, 0]
+    cbh_copy[cbh_copy < 0] = np.nan
+    base_height[valid_indices] = np.nanmin(cbh_copy[valid_indices, :], axis=1)
+    return base_height
 
 
 def get_vod_from_dardar(dardarfile: str):
@@ -110,7 +128,7 @@ def read_cloudsat_hdf4(filepath: str) -> dict:
 def get_cloud_fraction(cf: np.array) -> np.array:
     """max cloud fraction in multiple layers"""
     cf_copy = cf.astype(float)
-    cloud_fraction = np.ones(len(cf)) * -9
+    cloud_fraction = np.ones(len(cf)) * FILL_VALUE
     all_missing = np.all(cf < 0, axis=1)
     valid_indices = np.argwhere(~all_missing)[:, 0]
     cf_copy[cf < 0] = np.nan
@@ -122,18 +140,18 @@ def get_cloud_fraction(cf: np.array) -> np.array:
 def get_time(all_data):
     """convert time from TAI units to datetime"""
     dsec = time.mktime((1993, 1, 1, 0, 0, 0, 0, 0, 0)) - time.timezone
-    sec_1970 = all_data["Profile_time"].ravel() + all_data["TAI_start"].ravel() + dsec
+    sec_1970 = (
+        all_data["Profile_time"].ravel() + all_data["TAI_start"].ravel() + dsec
+    )
 
     times = convert2datetime(sec_1970, BaseDate("197001010000"))
     return times
 
 
 def convert2datetime(times: np.array, base_date_string: BaseDate) -> np.array:
-    """
-    convert time from secs to datetime objects
-    """
+    """convert time from secs to datetime objects"""
 
-    base_date = datetime.strptime(base_date_string.base_date, "%Y%m%d%H%M").replace(
-        tzinfo=pytz.UTC
-    )
+    base_date = datetime.strptime(
+        base_date_string.base_date, "%Y%m%d%H%M"
+    ).replace(tzinfo=pytz.UTC)
     return np.array([base_date + timedelta(seconds=value) for value in times])
