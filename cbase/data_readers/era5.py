@@ -5,6 +5,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from pps_nwp.gribfile import GRIBFile
 from pps_nwp.water.humidity import sph2rh
+from cbase.utils import thermodynamics
 
 
 class PressureLevels(Enum):
@@ -36,7 +37,6 @@ class PressureLevels(Enum):
     Q900 = 900
     Q950 = 950
     Q1000 = 1000
-
 
 
 @dataclass
@@ -77,7 +77,7 @@ class Era5:
             values = self.grb.get_q_vertical()[:]
         elif parameter == "h_2meter":
             values = self.grb.get_h_2meter()[:]
-        elif parameter == "PressureLevels":
+        elif parameter == "p_vertical":
             values = self.grb.get_p_vertical()[:]
         elif parameter in [
             "t100",
@@ -123,9 +123,13 @@ class Era5:
             values = self.grb.get_t_land()[:]
         elif parameter == "t_sea":
             values = self.grb.get_t_sea()[:]
+        elif parameter == "z_vertical":
+            values = self.grb.get_gh_vertical()[:]
+        elif parameter == "z_field":
+            values = self.get_zfield()[:]
         if values is not None:
             return values
-        raise ValueError("Invalid parameter name")
+        raise ValueError(f"Invalid parameter name, {parameter}")
 
     def _interpolate_to_pressure_level(self, field: np.ndarray, new_level: float):
         p = self.grb.get_p_vertical()[:]
@@ -137,6 +141,43 @@ class Era5:
         for i in range(npoints):
             field_interp[i] = interp1d(p_flat[:, i], field_flat[:, i])(new_level)
         return field_interp.reshape(field.shape[1], field.shape[2])
+
+    def get_pz_reference(self):
+        z = self.grb.get_z_vertical()[:, 0, :]
+        zsur = (z * thermodynamics.EARTH_RADIUS) / (
+            thermodynamics.G * thermodynamics.EARTH_RADIUS - z
+        )
+        psur = self.grb.get_p_vertical()[:, 0, :]
+        return psur, zsur
+
+    def get_zfield(self):
+        def _flip(arr: np.ndarray) -> np.ndarray:
+            return np.flip(arr, axis=0)
+
+        p0, z0 = self.get_pz_reference()
+        t = self.grb.get_t_vertical()[:]
+        h2o = thermodynamics.specific_humidity2vmr(self.grb.get_q_vertical()[:])
+        p = self.grb.get_p_vertical()[:]
+        decreasing = p[0, 1, 0] < p[0, 0, 0]
+        if not decreasing:
+            t = _flip(t)
+            p = _flip(p)
+            h2o = _flip(h2o)
+        z = np.zeros(t.shape)
+        for i in range(t.shape[0]):
+            for j in range(t.shape[2]):
+                z[i, :, j] = thermodynamics.pt2z(
+                    p[i, :, j],
+                    t[i, :, j],
+                    h2o[i, :, j],
+                    p0[i, j],
+                    z0[i, j],
+                    45,
+                    z_acc=1,
+                )
+        if not decreasing:
+            z = _flip(z)
+        return z
 
 
 if __name__ == "__main__":
