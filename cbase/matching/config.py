@@ -1,8 +1,8 @@
 I1, I2 = 0, 800  # index to select VGAC scan where collocations can lie
 COLLOCATION_THRESHOLD = 4  # km
 TIME_WINDOW = [-200, 200]  # just to find cloudsat swath closest to VGAC
-XIMAGE_SIZE = 32
-YIMAGE_SIZE = 32
+XIMAGE_SIZE = 128
+YIMAGE_SIZE = 128
 PADDING = 1.0  # some extra margin when interpolating ERA5 (in degrees)
 TIME_DIFF_ALLOWED = 5  # minutes
 SECS_PER_MINUTE = 60
@@ -11,9 +11,7 @@ CLOUDSAT_PATH = "/home/a002602/data/cloud_base/cloudsat/"
 VGAC_PATH = "/home/a002602/data/cloud_base/vgac/"
 NWP_PATH = "/home/a002602/data/cloud_base/NWP/"
 ATMS_PATH = "/nobackup/smhid17/proj/foua/data/satellit/ATMS/"
-OUTPUT_PATH = (
-    "/nobackup/smhid20/users/sm_indka/collocated_data/VGAC_PPS/cth_with16p_84p"
-)
+OUTPUT_PATH = "/nobackup/smhid20/users/sm_indka/collocated_data/VGAC_PPS/with_cbp_new/"
 
 CNN_NWP_PARAMETERS = [
     "h_2meter",
@@ -22,6 +20,9 @@ CNN_NWP_PARAMETERS = [
     "z_surface",
     "ciwv",
     "tclw",
+    "z_vertical",
+    "p_vertical",
+    "t_vertical",
     "t250",
     "t400",
     "t500",
@@ -46,7 +47,6 @@ CNN_NWP_PARAMETERS = [
     "q900",
     "q950",
     "q1000",
-    "snow_mask",
     "t_sea",
     "t_land",
 ]
@@ -72,6 +72,7 @@ CNN_VGAC_PARAMETERS = [
     "M16",
     "satzenith",
     "satazimuth",
+    "sunzenith",
 ]
 CNN_VGAC_PPS_PARAMETERS = [
     "time",
@@ -93,6 +94,9 @@ CNN_VGAC_PPS_PARAMETERS = [
     "M14",
     "M15",
     "M16",
+    "satzenith",
+    "satazimuth",
+    "sunzenith",
     "ctt",
     "cth",
     "ctp",
@@ -120,6 +124,31 @@ CNN_MATCHED_PARAMETERS = [
     "vis_optical_depth",
     "flag_base",
     "cloud_fraction",
+    "cloud_base_temp",
 ]
 
-ATMS_PARAMETERS = ["tb17", "tb18", "tb19", "tb20", "tb21", "tb22", "view_ang"]
+ATMS_PARAMETERS = [
+    "tb01",
+    "tb02",
+    "tb03",
+    "tb04",
+    "tb05",
+    "tb06",
+    "tb07",
+    "tb08",
+    "tb09",
+    "tb10",
+    "tb11",
+    "tb12",
+    "tb13",
+    "tb14",
+    "tb15",
+    "tb16",
+    "tb17",
+    "tb18",
+    "tb19",
+    "tb20",
+    "tb21",
+    "tb22",
+    "view_ang",
+]

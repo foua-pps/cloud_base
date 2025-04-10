@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import Union
 import numpy as np
 import xarray as xr
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata, interp1d
 from pps_nwp.gribfile import GRIBFile
 from cbase.data_readers.viirs import VGACData, VGACPPSData
 from cbase.data_readers.cloudsat import CloudsatData
@@ -108,8 +108,7 @@ class DataMatcher:
         if len(x_argmin) > 0:
             # check tdiff between cloudsat and VGAC collocations
             tdiff = np.abs(
-                self.cloudsat.time[icld[0] : icld[1]][x_argmin]
-                - self.vgac.time[i, 0]
+                self.cloudsat.time[icld[0] : icld[1]][x_argmin] - self.vgac.time[i, 0]
             )
             tdiff_minutes = np.abs(
                 np.array([t.seconds / SECS_PER_MINUTE for t in tdiff])
@@ -142,12 +141,8 @@ class DataMatcher:
         lat_c = _broadcast(
             self.cloudsat.latitude[icld1:icld2].reshape(-1, 1), shape1, shape2
         )
-        lon_v = _broadcast(
-            self.vgac.longitude[i, :].reshape(1, -1), shape1, shape2
-        )
-        lat_v = _broadcast(
-            self.vgac.latitude[i, :].reshape(1, -1), shape1, shape2
-        )
+        lon_v = _broadcast(self.vgac.longitude[i, :].reshape(1, -1), shape1, shape2)
+        lat_v = _broadcast(self.vgac.latitude[i, :].reshape(1, -1), shape1, shape2)
 
         return lon_c, lat_c, lon_v, lat_v
 
@@ -202,19 +197,11 @@ class DataMatcher:
                 )
                 if len(distance) > 0:
                     argmin = np.argmin(distance)
-                    index = np.arange(0, len(self.cloudsat.time), 1)[tmask][
-                        argmin
-                    ]
+                    index = np.arange(0, len(self.cloudsat.time), 1)[tmask][argmin]
 
                     cld_mask = np.argwhere(
-                        (
-                            self.cloudsat.latitude
-                            > self.cloudsat.latitude[index] - 1.5
-                        )
-                        & (
-                            self.cloudsat.latitude
-                            < self.cloudsat.latitude[index] + 1.5
-                        )
+                        (self.cloudsat.latitude > self.cloudsat.latitude[index] - 1.5)
+                        & (self.cloudsat.latitude < self.cloudsat.latitude[index] + 1.5)
                         & (
                             self.cloudsat.longitude
                             > self.cloudsat.longitude[index] - 1.5
@@ -247,7 +234,7 @@ class DataMatcher:
     ) -> np.ndarray:
         try:
             return self.era5.get_data(parameter, projection)
-        except Exception as e:
+        except Exception:
             return np.ones([projection[0].shape]) * -999.9
 
     def _make_cnn_data_matched_parameters(
@@ -257,9 +244,7 @@ class DataMatcher:
             data = self.collocated_data[parameter]
             values.append(data[box.i1 : box.i2, box.j1 : box.j2])
 
-    def _make_cnn_data_vgac_parameters(
-        self, lists_vgac_data: dict, box: BoundingBox
-    ):
+    def _make_cnn_data_vgac_parameters(self, lists_vgac_data: dict, box: BoundingBox):
         for parameter, values in lists_vgac_data.items():
             data = getattr(self.vgac, parameter)
             values.append(data[box.i1 : box.i2, box.j1 : box.j2])
@@ -311,15 +296,14 @@ class DataMatcher:
                     XIMAGE_SIZE,
                 ):
                     self._make_cnn_data_vgac_parameters(lists_vgac_data, box)
-                    self._make_cnn_data_matched_parameters(
-                        lists_collocated_data, box
-                    )
+                    self._make_cnn_data_matched_parameters(lists_collocated_data, box)
                     self._make_cnn_data_nwp_parameters(
                         lists_vgac_data, lists_nwp_data, inum
                     )
                     inum += 1
 
         if len(list(lists_nwp_data.values())[0]) > 0:
+            self.add_cloud_base_pressure(lists_nwp_data, lists_collocated_data)
             ds = self._make_dataset(
                 lists_vgac_data, lists_collocated_data, lists_nwp_data
             )
@@ -327,6 +311,33 @@ class DataMatcher:
                 ds.to_netcdf(self.out_filename)
         else:
             raise ValueError("No matches found")
+
+    def add_cloud_base_pressure(self, lists_nwp_data, lists_collocated_data):
+        # def _interpolate_column(z_vertical, p_vertical, base_heights):
+        #     return interp1d(
+        #         z_vertical,
+        #         p_vertical,
+        #         axis=0,
+        #         kind="linear",
+        #         bounds_error=False,
+        #         fill_value="extrapolate",
+        #     )(base_heights)
+
+        base_height = lists_collocated_data["cloud_base"]
+        z_vertical = lists_nwp_data["z_vertical"]
+        p_vertical = lists_nwp_data["p_vertical"]
+        lists_collocated_data["base_pressure"] = []
+        for case in range(len(base_height)):
+            base_pres = np.zeros_like(base_height[case])
+            for i in range(XIMAGE_SIZE):
+                for j in range(YIMAGE_SIZE):
+                    base_pres[i, j] = interp1d(
+                        z_vertical[case][:, i, j],
+                        p_vertical[case][:, i, j],
+                        bounds_error=False,
+                    )(base_height[case][i, j])
+            base_pres[base_height[case] < 0] = -999.9
+            lists_collocated_data["base_pressure"].append(base_pres)
 
     def _make_dataset(
         self,
@@ -340,13 +351,15 @@ class DataMatcher:
         npix = np.arange(YIMAGE_SIZE)
         nscan = np.arange(XIMAGE_SIZE)
         parameter_types = {
-            "VGAC": (CNN_VGAC_PPS_PARAMETERS, lists_vgac_data),
-            "MATCHED": (CNN_MATCHED_PARAMETERS, lists_collocated_data),
-            "NWP": (CNN_NWP_PARAMETERS, lists_nwp_data),
+            "VGAC": lists_vgac_data,
+            "MATCHED": lists_collocated_data,
+            "NWP": lists_nwp_data,
         }
 
-        for _, (parameters, data_list) in parameter_types.items():
-            for parameter in parameters:
+        for _, data_list in parameter_types.items():
+            for parameter in data_list.keys():
+                if parameter in ["z_vertical", "p_vertical", "t_vertical"]:
+                    continue
                 if (
                     parameter == "time"
                 ):  # time cannot be stred as datetime in netcdf file

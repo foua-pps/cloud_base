@@ -121,6 +121,7 @@ class VGACPPSData:
     M16: np.ndarray
     satzenith: np.ndarray
     satazimuth: np.ndarray
+    sunzenith: np.array
     ctp: np.ndarray
     cth: np.ndarray
     ctt: np.ndarray
@@ -145,9 +146,7 @@ class VGACPPSData:
         """read data from netCDF file"""
         with xr.open_dataset(filepath) as da:
             validation_height_base = -999.9 * np.ones_like(da.lat.values)
-            time_scanline = datetime64_to_datetime(
-                da.scanline_timestamps.values
-            )
+            time_scanline = datetime64_to_datetime(da.scanline_timestamps.values)
             time = np.tile(time_scanline, (da.lat.shape[1], 1)).T
         pps_data = get_pps_data(filepath)
         vgac = VGACPPSData(
@@ -171,8 +170,9 @@ class VGACPPSData:
             da.image7.values[0, :, :],  # M14
             da.image3.values[0, :, :],  # M15
             da.image4.values[0, :, :],  # M16
-            da.satzenith[0, :, :],
-            da.satazimuth[0, :, :],
+            da.satzenith.values[0, :, :],
+            da.satazimuth.values[0, :, :],
+            da.sunzenith.values[0, :, :],
             extract_pps_parameter(pps_data, "ctth_pres"),
             extract_pps_parameter(pps_data, "ctth_alti"),
             extract_pps_parameter(pps_data, "ctth_tempe"),
@@ -266,18 +266,12 @@ def get_pps_data_files(input_path: Path) -> Tuple[str, str, str, str]:
     # output_path = output_path.replace("AVHRR_HERITAGE/", "")
     # output_path = output_path.replace("NO_SBAF/", "NO_SBAF/export/")
     ctth_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CTTH_npp", input_filename)
-    ctth16_filename = re.sub(
-        r"S_NWC_viirs_npp", "S_NWC_CTTHUpP16_npp", input_filename
-    )
-    ctth84_filename = re.sub(
-        r"S_NWC_viirs_npp", "S_NWC_CTTHLoP84_npp", input_filename
-    )
+    ctth16_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CTTHUpP16_npp", input_filename)
+    ctth84_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CTTHLoP84_npp", input_filename)
     ct_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CT_npp", input_filename)
     cmic_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_CMIC_npp", input_filename)
     aux_path = output_path.replace("export", "intermediate/AUX_remapped/")
-    aux_filename = re.sub(
-        r"S_NWC_viirs_npp", "S_NWC_physiography_npp", input_filename
-    )
+    aux_filename = re.sub(r"S_NWC_viirs_npp", "S_NWC_physiography_npp", input_filename)
     return (
         output_path,
         aux_path,

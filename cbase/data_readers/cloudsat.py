@@ -6,9 +6,10 @@ from dataclasses import dataclass
 import pytz
 from pyhdf.SD import SD, SDC
 from pyhdf.HDF import HDF  # HC
+from pyhdf import VS
 import xarray as xr
-import pyhdf.VS
 import numpy as np
+from scipy.interpolate import interp1d
 
 FILL_VALUE = -999.9
 
@@ -40,6 +41,7 @@ class CloudsatData:
     flag_base: np.array
     cloud_fraction: np.array
     vis_optical_depth: np.array
+    cloud_base_temp: np.array
     time: np.array
     name: str
 
@@ -51,22 +53,23 @@ class CloudsatData:
         """
         if cldclass_lidar_file and dardar_cloud_file:
             csat_dict = read_cloudsat_hdf4(cldclass_lidar_file.as_posix())
-            vis_optical_depth = get_vod_from_dardar(
+            vis_optical_depth, temp_profile, height = get_dardar_parameters(
                 dardar_cloud_file.as_posix()
             )
-
+            cloud_base_temp = get_base_temp(
+                csat_dict["LayerBase"], temp_profile, height
+            )
             return cls(
                 csat_dict["Longitude"].ravel() % 360,
                 csat_dict["Latitude"].ravel(),
                 get_top_height(csat_dict["LayerTop"]),
                 get_base_height(csat_dict["LayerBase"]),
                 csat_dict["CloudLayers"].ravel(),
-                csat_dict["FlagBase"][
-                    :, 0
-                ],  # which instrument gives base height
+                csat_dict["FlagBase"][:, 0],  # which instrument gives base height
                 get_cloud_fraction(csat_dict["CloudFraction"]),
                 # csat_dict["CloudLayerType"][:, 0],
                 vis_optical_depth,
+                cloud_base_temp,
                 get_time(csat_dict),
                 os.path.basename(cldclass_lidar_file.as_posix()),
             )
@@ -99,10 +102,14 @@ def get_base_height(cbh: np.array) -> np.array:
     return base_height
 
 
-def get_vod_from_dardar(dardarfile: str):
-    """get visible optical depth"""
-    with xr.open_dataset(dardarfile) as dardar:
-        return dardar.vis_optical_depth.values
+def get_base_temp(cbh_profile, temp_profile, height):
+    cbh = get_base_height(cbh_profile)
+    return np.array(
+        [
+            interp1d(height, temp_profile[i, :])(cbh[i])
+            for i in range(temp_profile.shape[0])
+        ]
+    )
 
 
 def read_cloudsat_hdf4(filepath: str) -> dict:
@@ -125,6 +132,15 @@ def read_cloudsat_hdf4(filepath: str) -> dict:
     return all_data
 
 
+def get_dardar_parameters(dardarfile: str):
+    with xr.open_dataset(dardarfile) as dardar:
+        return (
+            dardar.vis_optical_depth.values,
+            dardar.temperature.values,
+            dardar.height.values,
+        )
+
+
 def get_cloud_fraction(cf: np.array) -> np.array:
     """max cloud fraction in multiple layers"""
     cf_copy = cf.astype(float)
@@ -140,9 +156,7 @@ def get_cloud_fraction(cf: np.array) -> np.array:
 def get_time(all_data):
     """convert time from TAI units to datetime"""
     dsec = time.mktime((1993, 1, 1, 0, 0, 0, 0, 0, 0)) - time.timezone
-    sec_1970 = (
-        all_data["Profile_time"].ravel() + all_data["TAI_start"].ravel() + dsec
-    )
+    sec_1970 = all_data["Profile_time"].ravel() + all_data["TAI_start"].ravel() + dsec
 
     times = convert2datetime(sec_1970, BaseDate("197001010000"))
     return times
@@ -151,7 +165,7 @@ def get_time(all_data):
 def convert2datetime(times: np.array, base_date_string: BaseDate) -> np.array:
     """convert time from secs to datetime objects"""
 
-    base_date = datetime.strptime(
-        base_date_string.base_date, "%Y%m%d%H%M"
-    ).replace(tzinfo=pytz.UTC)
+    base_date = datetime.strptime(base_date_string.base_date, "%Y%m%d%H%M").replace(
+        tzinfo=pytz.UTC
+    )
     return np.array([base_date + timedelta(seconds=value) for value in times])
