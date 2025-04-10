@@ -2,6 +2,7 @@
 import os
 import re
 from collections import OrderedDict
+import pickle
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
@@ -176,28 +177,6 @@ def plot_data(station, data):
 
 
 # %%
-station = "ny-alesund"
-station = "hyytiala"
-station = "norunda"
-date = "20250311"
-cfile1 = "/home/sm_indka/data/Celiometer/{date}}_{station}_cl51_5a1e499b.nc"
-cfile = f"/home/sm_indka/data/Celiometer/{date}_{station}_classification.nc"
-
-# %%
-viirsfiles = sorted(
-    glob.glob(
-        f"/nobackup/smhid20/proj/foua/data/NWCSAF/CBH_FMI_MAR25/FMI_CBH_PPS/*CBH*npp*{date}*nc"
-    )
-)
-
-BACKSCATTERFILES = {
-    "hyytiala": "hyytiala_cl61d_241bda14",
-    "ny-alesund": "ny-alesund_cl51_38c84797",
-    "norunda": "norunda_cl51_5a1e499b",
-}
-
-
-# %%
 
 cbh_all_days = OrderedDict()
 cbh_all_days_cm = OrderedDict()
@@ -224,7 +203,7 @@ stations = [
     "payerne",
     "potenza",
 ]
-# stations = ["hyytiala"]  # , "norunda", "ny-alesund", "lindenberg", "leipzig"]
+
 dates = ["20250309", "20250310", "20250311"]
 
 data = {
@@ -258,15 +237,6 @@ for station in stations:
     for key in ["cbh_sat", "cbh_cm", "cth_sat", "cth_cm", "sunzenith", "time", "sat"]:
         data[station][key] = np.concatenate(data[station][key])
     plot_data(station, data)
-
-print(data)
-# %%
-# dates = ["20250309", "20250310", "20250311"]
-
-# for station in stations:
-#    plot_data(station, data)
-
-import pickle
 
 with open("collocated_data_resampled_allfiles.pickle", "wb") as f:
     pickle.dump(data, f)
