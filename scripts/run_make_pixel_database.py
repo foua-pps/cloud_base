@@ -5,6 +5,8 @@ from glob import glob
 import argparse
 from cbase.matching.make_pixel_based_database import make_pixel_dataset
 
+DO_ATMS = False
+
 
 def parse_args():
     """Parse command-line arguments"""
@@ -52,7 +54,7 @@ def main():
         print("No input files found with the given pattern.")
         return
 
-    shuffle(input_files)
+    # shuffle(input_files)
 
     total_files = len(input_files)
     s1 = int(total_files * args.train_ratio)
@@ -65,29 +67,25 @@ def main():
 
     # Generate and save the training dataset
     print("Processing training dataset")
-    da_train = make_pixel_dataset(train_files)
+    da_train = make_pixel_dataset(train_files, do_atms=DO_ATMS)
     xr.Dataset.from_dict(da_train).to_netcdf(
-        os.path.join(
-            args.outpath, "training_data_vgac_cloudsat_caliop_atms_pps_pixel.nc"
-        )
+        os.path.join(args.outpath, "training_data_vgac_cloudsat_caliop_atms.nc")
     )
 
     # Generate and save the validation dataset
     print("Processing validation dataset")
-    da_val = make_pixel_dataset(val_files)
+    da_val = make_pixel_dataset(val_files, do_atms=DO_ATMS)
     xr.Dataset.from_dict(da_val).to_netcdf(
         os.path.join(
-            args.outpath, "validation_data_vgac_cloudsat_caliop_atms_pps_pixel.nc"
+            args.outpath, "validation_data_vgac_cloudsat_caliop_atms.nc"
         )
     )
 
     # Generate and save the testing dataset
     print("Processing testing dataset")
-    da_test = make_pixel_dataset(test_files)
+    da_test = make_pixel_dataset(test_files, do_atms=DO_ATMS)
     xr.Dataset.from_dict(da_test).to_netcdf(
-        os.path.join(
-            args.outpath, "testing_data_vgac_cloudsat_caliop_atms_pps_pixel.nc"
-        )
+        os.path.join(args.outpath, "testing_data_vgac_cloudsat_caliop_atms.nc")
     )
 
 
