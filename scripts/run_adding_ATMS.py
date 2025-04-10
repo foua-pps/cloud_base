@@ -31,7 +31,9 @@ def main():
     vgacfiles = glob.glob(os.path.join(args.vgacpath, "cnn*2012*"))
     for vgacfile in vgacfiles:
         print(vgacfile)
-        matcher = MatchATMSVGAC(Path(vgacfile), Path(args.atmspath), Path(args.outpath))
+        matcher = MatchATMSVGAC(
+            Path(vgacfile), Path(args.atmspath), Path(args.outpath)
+        )
         matcher.matching()
 
 

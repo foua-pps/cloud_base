@@ -14,7 +14,7 @@ def split_files(files):
 
 
 files = glob.glob(
-    "/nobackup/smhid20/users/sm_indka/collocated_data/including_clearsky/*cnn*.nc"
+    "/nobackup/smhid20/users/sm_indka/collocated_data/VGAC_PPS/with_cbp_new/cnn*nc"
 )
-outpath = "/nobackup/smhid20/users/sm_indka/collocated_data/including_clearsky/split_data/"
+outpath = "/nobackup/smhid20/users/sm_indka/collocated_data/VGAC_PPS/with_cbp_new/split_data/"
 split_files(files)
