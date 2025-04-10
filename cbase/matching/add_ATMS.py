@@ -52,9 +52,7 @@ class MatchATMSVGAC:
         """find matching ATMS files within +- TDIFF of VGAC file"""
         vgc_time = datetime.fromtimestamp(self.vgac.time.values[0, 0], pytz.utc)
         time_string = (
-            f"{vgc_time.year}"
-            f"{vgc_time.strftime('%m')}"
-            f"{vgc_time.strftime('%d')}T"
+            f"{vgc_time.year}{vgc_time.strftime('%m')}{vgc_time.strftime('%d')}T"
         )
 
         atmsfiles = sorted(glob.glob(f"{atmspath}/*{time_string}*"))
@@ -82,7 +80,12 @@ class MatchATMSVGAC:
 
             latlon_box = self.get_latlon_bounds()
             latlon_mask = self.get_latlon_mask(latlon_box)
-            matcher_mask = self.get_closest_matches(latlon_mask)
+
+            try:
+                matcher_mask = self.get_closest_matches(latlon_mask)
+            except Exception as e:
+                print(f"Problem with finding matches {e}")
+                interpolated_atms = self.add_fillvalue_atms_data()
 
             try:
                 interpolated_atms = self.interpolate_atms2vgac(
@@ -116,7 +119,10 @@ class MatchATMSVGAC:
     def get_closest_matches(self, latlon_mask: np.ndarray) -> np.ndarray[np.bool_]:
         """find closest matches of ATMS with VGAc using atrain _match"""
         source = (self.vgac.longitude.values, self.vgac.latitude.values)
-        target = (self.atms.longitude[latlon_mask], self.atms.latitude[latlon_mask])
+        target = (
+            self.atms.longitude[latlon_mask],
+            self.atms.latitude[latlon_mask],
+        )
 
         _, distances = match_lonlat(
             source, target, n_neighbours=2, radius_of_influence=1000 * 8
